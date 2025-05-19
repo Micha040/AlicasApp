@@ -330,12 +330,16 @@ export default function ChatTab({ user }) {
                 {pendingRequests.map(req => {
                   const partner = getChatPartnerObj(req);
                   return (
-                    <ListItem key={req.id} sx={{ alignItems: 'center' }}>
+                    <ListItem key={req.id} sx={{ alignItems: 'center', display: 'flex' }}>
                       <Avatar src={partner.avatar_url} sx={{ width: 32, height: 32, mr: 1 }} />
-                      <ListItemText primary={`Von: ${partner.username}`} />
+                      <Box sx={{ flex: 1, minWidth: 0 }}>
+                        <Typography noWrap>
+                          Von: <b>{partner.username}</b>
+                        </Typography>
+                      </Box>
                       <ButtonGroup variant="outlined" sx={{ ml: 1 }}>
-                        <Button color="primary" onClick={() => handleRequestAction(req.id, 'accept')}>Annehmen</Button>
-                        <Button color="secondary" onClick={() => handleRequestAction(req.id, 'declined')}>Ablehnen</Button>
+                        <Button color="primary" size="small" onClick={() => handleRequestAction(req.id, 'accept')}>Annehmen</Button>
+                        <Button color="secondary" size="small" onClick={() => handleRequestAction(req.id, 'declined')}>Ablehnen</Button>
                       </ButtonGroup>
                     </ListItem>
                   );
@@ -466,12 +470,16 @@ export default function ChatTab({ user }) {
               {pendingRequests.map(req => {
                 const partner = getChatPartnerObj(req);
                 return (
-                  <ListItem key={req.id} sx={{ alignItems: 'center' }}>
+                  <ListItem key={req.id} sx={{ alignItems: 'center', display: 'flex' }}>
                     <Avatar src={partner.avatar_url} sx={{ width: 32, height: 32, mr: 1 }} />
-                    <ListItemText primary={`Von: ${partner.username}`} />
+                    <Box sx={{ flex: 1, minWidth: 0 }}>
+                      <Typography noWrap>
+                        Von: <b>{partner.username}</b>
+                      </Typography>
+                    </Box>
                     <ButtonGroup variant="outlined" sx={{ ml: 1 }}>
-                      <Button color="primary" onClick={() => handleRequestAction(req.id, 'accept')}>Annehmen</Button>
-                      <Button color="secondary" onClick={() => handleRequestAction(req.id, 'declined')}>Ablehnen</Button>
+                      <Button color="primary" size="small" onClick={() => handleRequestAction(req.id, 'accept')}>Annehmen</Button>
+                      <Button color="secondary" size="small" onClick={() => handleRequestAction(req.id, 'declined')}>Ablehnen</Button>
                     </ButtonGroup>
                   </ListItem>
                 );
