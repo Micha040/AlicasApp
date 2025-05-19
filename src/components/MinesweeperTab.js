@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Typography, Button, Grid, Paper } from '@mui/material';
+import { Box, Typography, Button, Grid, Paper, ToggleButton } from '@mui/material';
+import FlagIcon from '@mui/icons-material/Flag';
 
 const SIZE = 8;
 const MINES = 10;
@@ -40,6 +41,7 @@ export default function MinesweeperTab() {
   const [gameOver, setGameOver] = useState(false);
   const [won, setWon] = useState(false);
   const [revealedCount, setRevealedCount] = useState(0);
+  const [flagMode, setFlagMode] = useState(false);
 
   useEffect(() => {
     // Sieg prüfen
@@ -57,7 +59,7 @@ export default function MinesweeperTab() {
   }, [board, gameOver]);
 
   const reveal = (r, c) => {
-    if (gameOver || board[r][c].revealed) return;
+    if (gameOver || board[r][c].revealed || board[r][c].flagged) return;
     if (board[r][c].mine) {
       // Spiel verloren
       setGameOver(true);
@@ -88,12 +90,31 @@ export default function MinesweeperTab() {
     setBoard(newBoard);
   };
 
+  const toggleFlag = (r, c) => {
+    if (gameOver || board[r][c].revealed) return;
+    const newBoard = board.map(row => row.map(cell => ({ ...cell })));
+    newBoard[r][c].flagged = !newBoard[r][c].flagged;
+    setBoard(newBoard);
+  };
+
+  const handleCellClick = (r, c, e) => {
+    e.preventDefault();
+    if (flagMode || (e.type === 'contextmenu' || (e.button === 2))) {
+      toggleFlag(r, c);
+    } else {
+      reveal(r, c);
+    }
+  };
+
   const reset = () => {
     setBoard(generateBoard());
     setGameOver(false);
     setWon(false);
     setRevealedCount(0);
   };
+
+  // Responsive cell size
+  const cellSize = window.innerWidth < 600 ? 28 : 36;
 
   return (
     <Box sx={{ textAlign: 'center', mt: 2 }}>
@@ -102,18 +123,41 @@ export default function MinesweeperTab() {
         Finde alle {MINES} Minen! Klicke auf ein Feld, um es aufzudecken.
       </Typography>
       <Button onClick={reset} variant="contained" sx={{ mb: 2 }}>Neues Spiel</Button>
-      <Box sx={{ display: 'inline-block', border: '2px solid #888', borderRadius: 2, p: 1, background: '#eee' }}>
-        <Grid container spacing={0}>
+      <ToggleButton
+        value="flag"
+        selected={flagMode}
+        onChange={() => setFlagMode(f => !f)}
+        sx={{ mb: 2, ml: 2 }}
+      >
+        <FlagIcon sx={{ mr: 1 }} />
+        {flagMode ? 'Flaggen-Modus' : 'Felder aufdecken'}
+      </ToggleButton>
+      <Box
+        sx={{
+          display: 'flex',
+          justifyContent: 'center',
+          overflowX: 'auto',
+          width: '100%',
+          maxWidth: 400,
+          mx: 'auto',
+          border: '2px solid #888',
+          borderRadius: 2,
+          p: 1,
+          background: '#eee',
+        }}
+      >
+        <Grid container spacing={0} sx={{ width: 'auto', minWidth: cellSize * SIZE }}>
           {board.map((row, r) => (
-            <Grid container item key={r} spacing={0}>
+            <Grid container item key={r} spacing={0} sx={{ width: '100%' }}>
               {row.map((cell, c) => (
                 <Grid item key={c}>
                   <Paper
-                    onClick={() => reveal(r, c)}
+                    onClick={e => handleCellClick(r, c, e)}
+                    onContextMenu={e => handleCellClick(r, c, e)}
                     sx={{
-                      width: 36, height: 36, m: 0.2, p: 0,
+                      width: cellSize, height: cellSize, m: 0.2, p: 0,
                       background: cell.revealed ? (cell.mine ? '#e57373' : '#fff') : '#bdbdbd',
-                      color: cell.mine ? '#b71c1c' : cell.count === 1 ? '#1976d2' : cell.count === 2 ? '#388e3c' : cell.count > 2 ? '#fbc02d' : '#333',
+                      color: cell.flagged ? '#d32f2f' : cell.mine ? '#b71c1c' : cell.count === 1 ? '#1976d2' : cell.count === 2 ? '#388e3c' : cell.count > 2 ? '#fbc02d' : '#333',
                       fontWeight: 'bold',
                       fontSize: '1.2rem',
                       textAlign: 'center',
@@ -123,7 +167,9 @@ export default function MinesweeperTab() {
                     }}
                     elevation={cell.revealed ? 1 : 3}
                   >
-                    {cell.revealed ? (cell.mine ? '💣' : (cell.count > 0 ? cell.count : '')) : ''}
+                    {cell.revealed
+                      ? (cell.mine ? '💣' : (cell.count > 0 ? cell.count : ''))
+                      : (cell.flagged ? <FlagIcon fontSize="small" /> : '')}
                   </Paper>
                 </Grid>
               ))}
