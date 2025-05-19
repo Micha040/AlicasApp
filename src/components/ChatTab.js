@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../supabaseClient';
-import { Box, Typography, TextField, Button, List, ListItem, ListItemText, Dialog, DialogTitle, DialogContent, DialogActions, Alert } from '@mui/material';
+import { Box, Typography, TextField, Button, List, ListItem, ListItemText, Alert, Divider, Paper } from '@mui/material';
 
 export default function ChatTab({ user }) {
   const [chats, setChats] = useState([]);
@@ -12,7 +12,21 @@ export default function ChatTab({ user }) {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [pendingRequests, setPendingRequests] = useState([]);
-  const [refresh, setRefresh] = useState(0);
+  const [userMap, setUserMap] = useState({});
+  const messagesEndRef = useRef(null);
+
+  // Lade alle Usernamen für Mapping
+  useEffect(() => {
+    const fetchUsers = async () => {
+      const { data } = await supabase.from('users').select('id,username');
+      if (data) {
+        const map = {};
+        data.forEach(u => { map[u.id] = u.username; });
+        setUserMap(map);
+      }
+    };
+    fetchUsers();
+  }, []);
 
   // Lade alle Chats des Users
   useEffect(() => {
@@ -26,7 +40,7 @@ export default function ChatTab({ user }) {
       setChats(data || []);
     };
     fetchChats();
-  }, [user, refresh]);
+  }, [user]);
 
   // Lade offene Anfragen
   useEffect(() => {
@@ -40,7 +54,7 @@ export default function ChatTab({ user }) {
       setPendingRequests(data || []);
     };
     fetchRequests();
-  }, [user, refresh]);
+  }, [user]);
 
   // Lade Nachrichten für ausgewählten Chat
   useEffect(() => {
@@ -54,7 +68,35 @@ export default function ChatTab({ user }) {
       setMessages(data || []);
     };
     fetchMessages();
-  }, [selectedChat, refresh]);
+  }, [selectedChat]);
+
+  // Realtime-Subscription für neue Nachrichten
+  useEffect(() => {
+    if (!selectedChat) return;
+    const channel = supabase.channel('messages-realtime')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'messages',
+        filter: `chat_id=eq.${selectedChat.id}`
+      }, payload => {
+        // Neue Nachricht oder Update
+        if (payload.eventType === 'INSERT') {
+          setMessages(msgs => [...msgs, payload.new]);
+        }
+      })
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [selectedChat]);
+
+  // Auto-Scroll zu neuen Nachrichten
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages]);
 
   // Suche nach Username
   const handleSearch = async () => {
@@ -100,7 +142,6 @@ export default function ChatTab({ user }) {
       setSuccess('Anfrage gesendet!');
       setSearchResult(null);
       setSearchUsername('');
-      setRefresh(r => r + 1);
     }
   };
 
@@ -108,7 +149,6 @@ export default function ChatTab({ user }) {
   const handleRequestAction = async (chatId, action) => {
     const status = action === 'accept' ? 'accepted' : 'declined';
     await supabase.from('chats').update({ status }).eq('id', chatId);
-    setRefresh(r => r + 1);
   };
 
   // Nachricht senden
@@ -118,94 +158,109 @@ export default function ChatTab({ user }) {
       { chat_id: selectedChat.id, sender_id: user.id, content: newMessage }
     ]);
     setNewMessage('');
-    setRefresh(r => r + 1);
   };
 
-  // Hilfsfunktion: Chatpartner anzeigen
-  const getChatPartner = (chat) => {
-    if (chat.user1_id === user.id) return chat.user2_id;
-    return chat.user1_id;
+  // Hilfsfunktion: Chatpartner-Objekt
+  const getChatPartnerObj = (chat) => {
+    const partnerId = chat.user1_id === user.id ? chat.user2_id : chat.user1_id;
+    return { id: partnerId, username: userMap[partnerId] || `User #${partnerId}` };
   };
 
   return (
-    <Box sx={{ maxWidth: 600, mx: 'auto', mt: 2 }}>
-      <Typography variant="h5" gutterBottom>Chats</Typography>
-      {/* Chat-Suche und Anfrage */}
-      <Box sx={{ mb: 3 }}>
-        <Typography variant="h6">Neuen Chat starten</Typography>
-        <Box sx={{ display: 'flex', gap: 2, mb: 1 }}>
-          <TextField
-            label="Username suchen"
-            value={searchUsername}
-            onChange={e => setSearchUsername(e.target.value)}
-            fullWidth
-          />
-          <Button variant="contained" color="primary" onClick={handleSearch}>
-            Suchen
-          </Button>
-        </Box>
-        {error && <Alert severity="error" sx={{ mb: 1 }}>{error}</Alert>}
-        {success && <Alert severity="success" sx={{ mb: 1 }}>{success}</Alert>}
-        {searchResult && (
-          <Box sx={{ mb: 1 }}>
-            <Typography>Gefunden: {searchResult.username} ({searchResult.email})</Typography>
-            <Button variant="contained" color="secondary" onClick={handleRequest}>
-              Chat-Anfrage senden
+    <Box sx={{ display: 'flex', height: '70vh', maxWidth: 1000, mx: 'auto', mt: 2, bgcolor: '#fff', borderRadius: 2, boxShadow: 2 }}>
+      {/* Chat-Liste */}
+      <Box sx={{ width: { xs: '100%', md: 300 }, borderRight: { md: '1px solid #eee' }, p: 2, overflowY: 'auto' }}>
+        <Typography variant="h5" gutterBottom>Chats</Typography>
+        {/* Chat-Suche und Anfrage */}
+        <Box sx={{ mb: 3 }}>
+          <Typography variant="h6">Neuen Chat starten</Typography>
+          <Box sx={{ display: 'flex', gap: 2, mb: 1 }}>
+            <TextField
+              label="Username suchen"
+              value={searchUsername}
+              onChange={e => setSearchUsername(e.target.value)}
+              fullWidth
+            />
+            <Button variant="contained" color="primary" onClick={handleSearch}>
+              Suchen
             </Button>
+          </Box>
+          {error && <Alert severity="error" sx={{ mb: 1 }}>{error}</Alert>}
+          {success && <Alert severity="success" sx={{ mb: 1 }}>{success}</Alert>}
+          {searchResult && (
+            <Box sx={{ mb: 1 }}>
+              <Typography>Gefunden: {searchResult.username} ({searchResult.email})</Typography>
+              <Button variant="contained" color="secondary" onClick={handleRequest}>
+                Chat-Anfrage senden
+              </Button>
+            </Box>
+          )}
+        </Box>
+        {/* Offene Anfragen */}
+        {pendingRequests.length > 0 && (
+          <Box sx={{ mb: 3 }}>
+            <Typography variant="h6">Offene Chat-Anfragen</Typography>
+            <List>
+              {pendingRequests.map(req => (
+                <ListItem key={req.id}>
+                  <ListItemText primary={`Von: ${userMap[req.user1_id] || `User #${req.user1_id}`}`} />
+                  <Button color="primary" onClick={() => handleRequestAction(req.id, 'accept')}>Annehmen</Button>
+                  <Button color="secondary" onClick={() => handleRequestAction(req.id, 'declined')}>Ablehnen</Button>
+                </ListItem>
+              ))}
+            </List>
+          </Box>
+        )}
+        <Typography variant="h6">Deine Chats</Typography>
+        <List>
+          {chats.filter(c => c.status === 'accepted').map(chat => {
+            const partner = getChatPartnerObj(chat);
+            return (
+              <ListItem button key={chat.id} selected={selectedChat?.id === chat.id} onClick={() => setSelectedChat(chat)}>
+                <ListItemText primary={`Chat mit ${partner.username}`} />
+              </ListItem>
+            );
+          })}
+        </List>
+      </Box>
+      {/* Chat-Fenster */}
+      <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', p: 2, minWidth: 0 }}>
+        {selectedChat ? (
+          <>
+            <Typography variant="h6" gutterBottom>
+              Chat mit {getChatPartnerObj(selectedChat).username}
+            </Typography>
+            <Divider sx={{ mb: 2 }} />
+            <Box sx={{ flex: 1, overflowY: 'auto', mb: 2, bgcolor: '#fafafa', borderRadius: 1, p: 1 }}>
+              <List>
+                {messages.map(msg => (
+                  <ListItem key={msg.id} sx={{ justifyContent: msg.sender_id === user.id ? 'flex-end' : 'flex-start' }}>
+                    <Paper sx={{ p: 1.5, bgcolor: msg.sender_id === user.id ? '#ff4081' : '#eee', color: msg.sender_id === user.id ? 'white' : 'black', borderRadius: 2, maxWidth: '70%' }}>
+                      <Typography variant="body2">{msg.content}</Typography>
+                      <Typography variant="caption" sx={{ opacity: 0.7 }}>{msg.sender_id === user.id ? 'Du' : userMap[msg.sender_id] || `User #${msg.sender_id}`}</Typography>
+                    </Paper>
+                  </ListItem>
+                ))}
+                <div ref={messagesEndRef} />
+              </List>
+            </Box>
+            <Box sx={{ display: 'flex', gap: 2 }}>
+              <TextField
+                value={newMessage}
+                onChange={e => setNewMessage(e.target.value)}
+                fullWidth
+                placeholder="Nachricht schreiben..."
+                onKeyDown={e => { if (e.key === 'Enter') handleSend(); }}
+              />
+              <Button onClick={handleSend} variant="contained">Senden</Button>
+            </Box>
+          </>
+        ) : (
+          <Box sx={{ textAlign: 'center', color: '#aaa', mt: 10 }}>
+            <Typography>Wähle einen Chat aus oder starte einen neuen!</Typography>
           </Box>
         )}
       </Box>
-      {/* Offene Anfragen */}
-      {pendingRequests.length > 0 && (
-        <Box sx={{ mb: 3 }}>
-          <Typography variant="h6">Offene Chat-Anfragen</Typography>
-          <List>
-            {pendingRequests.map(req => (
-              <ListItem key={req.id}>
-                <ListItemText primary={`Von: User #${req.user1_id}`} />
-                <Button color="primary" onClick={() => handleRequestAction(req.id, 'accept')}>Annehmen</Button>
-                <Button color="secondary" onClick={() => handleRequestAction(req.id, 'declined')}>Ablehnen</Button>
-              </ListItem>
-            ))}
-          </List>
-        </Box>
-      )}
-      {/* Chat-Liste */}
-      <Typography variant="h6">Deine Chats</Typography>
-      <List>
-        {chats.filter(c => c.status === 'accepted').map(chat => (
-          <ListItem button key={chat.id} selected={selectedChat?.id === chat.id} onClick={() => setSelectedChat(chat)}>
-            <ListItemText primary={`Chat mit User #${getChatPartner(chat)}`} />
-          </ListItem>
-        ))}
-      </List>
-      {/* Chat-Fenster */}
-      <Dialog open={!!selectedChat} onClose={() => setSelectedChat(null)} fullWidth maxWidth="sm">
-        <DialogTitle>Chat</DialogTitle>
-        <DialogContent dividers sx={{ minHeight: 200 }}>
-          <List>
-            {messages.map(msg => (
-              <ListItem key={msg.id}>
-                <ListItemText
-                  primary={msg.content}
-                  secondary={msg.sender_id === user.id ? 'Du' : `User #${msg.sender_id}`}
-                  sx={{ textAlign: msg.sender_id === user.id ? 'right' : 'left' }}
-                />
-              </ListItem>
-            ))}
-          </List>
-        </DialogContent>
-        <DialogActions>
-          <TextField
-            value={newMessage}
-            onChange={e => setNewMessage(e.target.value)}
-            fullWidth
-            placeholder="Nachricht schreiben..."
-            onKeyDown={e => { if (e.key === 'Enter') handleSend(); }}
-          />
-          <Button onClick={handleSend} variant="contained">Senden</Button>
-        </DialogActions>
-      </Dialog>
     </Box>
   );
 } 
