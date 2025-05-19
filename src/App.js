@@ -50,6 +50,7 @@ import Register from './components/Register';
 import Login from './components/Login';
 import MusicTab from './components/MusicTab';
 import ChatTab from './components/ChatTab';
+import ProfileDialog from './components/ProfileDialog';
 
 function HideOnScroll(props) {
   const { children, setAppBarHidden } = props;
@@ -709,6 +710,7 @@ function App() {
   const [wordleWords, setWordleWords] = useState([]);
   const [showRegister, setShowRegister] = useState(false);
   const [appBarHidden, setAppBarHidden] = useState(false);
+  const [profileDialogOpen, setProfileDialogOpen] = useState(false);
 
   useEffect(() => {
     // Erinnerungen aus Supabase laden
@@ -796,6 +798,11 @@ function App() {
     localStorage.removeItem('user');
   };
 
+  const handleProfileUpdate = (updatedUser) => {
+    setUser(updatedUser);
+    localStorage.setItem('user', JSON.stringify(updatedUser));
+  };
+
   if (!user) {
     return (
       <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: '#f5f5f5' }}>
@@ -832,12 +839,16 @@ function App() {
 
   return (
     <Box sx={{ bgcolor: '#f5f5f5', minHeight: '100vh' }}>
-      {/* Schmale AppBar oben, verschwindet beim Scrollen */}
       <HideOnScroll setAppBarHidden={setAppBarHidden}>
         <AppBar position="sticky" color="default" elevation={0} sx={{ borderBottom: 1, borderColor: 'divider', height: 56, justifyContent: 'center' }}>
           <Toolbar sx={{ minHeight: 56, px: 2, display: 'flex', justifyContent: 'space-between' }}>
-            <IconButton size="large" edge="start" color="inherit">
-              <Avatar src="https://i.pravatar.cc/40?img=1" />
+            <IconButton 
+              size="large" 
+              edge="start" 
+              color="inherit"
+              onClick={() => setProfileDialogOpen(true)}
+            >
+              <Avatar src={user?.avatar_url || "https://i.pravatar.cc/40?img=1"} />
             </IconButton>
             <Box sx={{ flex: 1 }} />
             <IconButton size="large" edge="end" color="inherit">
@@ -846,7 +857,15 @@ function App() {
           </Toolbar>
         </AppBar>
       </HideOnScroll>
-      {/* Sticky Tab-Leiste darunter, rutscht nach oben wenn AppBar versteckt ist */}
+
+      <ProfileDialog
+        open={profileDialogOpen}
+        onClose={() => setProfileDialogOpen(false)}
+        user={user}
+        onLogout={handleLogout}
+        onProfileUpdate={handleProfileUpdate}
+      />
+
       <AppBar
         position="sticky"
         color="inherit"
