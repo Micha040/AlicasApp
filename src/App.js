@@ -20,9 +20,15 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogActions
+  DialogActions,
+  Avatar,
+  AppBar,
+  Toolbar,
+  useScrollTrigger,
+  Slide
 } from '@mui/material';
 import { motion } from 'framer-motion';
+import SettingsIcon from '@mui/icons-material/Settings';
 import AddPhotoAlternateIcon from '@mui/icons-material/AddPhotoAlternate';
 import VideoLibraryIcon from '@mui/icons-material/VideoLibrary';
 import MessageIcon from '@mui/icons-material/Message';
@@ -44,6 +50,16 @@ import Register from './components/Register';
 import Login from './components/Login';
 import MusicTab from './components/MusicTab';
 import ChatTab from './components/ChatTab';
+
+function HideOnScroll(props) {
+  const { children } = props;
+  const trigger = useScrollTrigger({ threshold: 80 });
+  return (
+    <Slide appear={false} direction="down" in={!trigger}>
+      {children}
+    </Slide>
+  );
+}
 
 function TabPanel({ children, value, index }) {
   return (
@@ -811,34 +827,38 @@ function App() {
   }
 
   return (
-    <Container maxWidth="md" sx={{ position: 'relative' }}>
-      <Button onClick={handleLogout} color="secondary" sx={{ position: 'absolute', top: 16, right: 16 }}>
-        Logout
-      </Button>
-      <Box sx={{ my: 4, textAlign: 'center' }}>
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
+    <Box sx={{ bgcolor: '#f5f5f5', minHeight: '100vh' }}>
+      {/* Schmale AppBar oben, verschwindet beim Scrollen */}
+      <HideOnScroll>
+        <AppBar position="sticky" color="default" elevation={0} sx={{ borderBottom: 1, borderColor: 'divider', height: 56, justifyContent: 'center' }}>
+          <Toolbar sx={{ minHeight: 56, px: 2, display: 'flex', justifyContent: 'space-between' }}>
+            <IconButton size="large" edge="start" color="inherit">
+              <Avatar src="https://i.pravatar.cc/40?img=1" />
+            </IconButton>
+            <Box sx={{ flex: 1 }} />
+            <IconButton size="large" edge="end" color="inherit">
+              <SettingsIcon />
+            </IconButton>
+          </Toolbar>
+        </AppBar>
+      </HideOnScroll>
+      {/* Sticky Tab-Leiste darunter */}
+      <AppBar position="sticky" color="inherit" elevation={1} sx={{ top: 56, zIndex: 1100 }}>
+        <Tabs
+          value={tabValue}
+          onChange={handleTabChange}
+          centered
+          sx={{ borderBottom: 1, borderColor: 'divider', minHeight: 48 }}
+          TabIndicatorProps={{ style: { height: 3, background: '#ff4081' } }}
         >
-          <Typography variant="h2" component="h1" gutterBottom>
-            Unsere Erinnerungen
-          </Typography>
-        </motion.div>
-
-        <Paper sx={{ width: '100%', mb: 4 }}>
-          <Tabs
-            value={tabValue}
-            onChange={handleTabChange}
-            centered
-            sx={{ borderBottom: 1, borderColor: 'divider' }}
-          >
-            <Tab icon={<AccessTimeIcon />} label="Zeitkapsel" />
-            <Tab icon={<SportsEsportsIcon />} label="Spiele" />
-            <Tab icon={<FavoriteIcon />} label="Musik" />
-            <Tab icon={<MessageIcon />} label="Chat" />
-          </Tabs>
-
+          <Tab icon={<AccessTimeIcon />} label="Zeitkapsel" sx={{ minHeight: 48 }} />
+          <Tab icon={<SportsEsportsIcon />} label="Spiele" sx={{ minHeight: 48 }} />
+          <Tab icon={<FavoriteIcon />} label="Musik" sx={{ minHeight: 48 }} />
+          <Tab icon={<MessageIcon />} label="Chat" sx={{ minHeight: 48 }} />
+        </Tabs>
+      </AppBar>
+      <Container maxWidth="md" sx={{ pt: 4 }}>
+        <Paper sx={{ width: '100%', mb: 4, boxShadow: 0, bgcolor: 'transparent' }}>
           <TabPanel value={tabValue} index={0}>
             {loading ? (
               <Typography color="primary">Lade Daten...</Typography>
@@ -855,21 +875,18 @@ function App() {
               />
             )}
           </TabPanel>
-
           <TabPanel value={tabValue} index={1}>
             <GamesTab wordleWords={wordleWords} />
           </TabPanel>
-
           <TabPanel value={tabValue} index={2}>
             <MusicTab user={user} />
           </TabPanel>
-
           <TabPanel value={tabValue} index={3}>
             <ChatTab user={user} />
           </TabPanel>
         </Paper>
-      </Box>
-    </Container>
+      </Container>
+    </Box>
   );
 }
 
