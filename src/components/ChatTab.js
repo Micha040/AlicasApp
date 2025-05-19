@@ -229,6 +229,16 @@ export default function ChatTab({ user }) {
     return { id: partnerId, username: userMap[partnerId] || `User #${partnerId}` };
   };
 
+  // Bild-Styles für Nachrichten
+  const chatImageStyle = {
+    maxWidth: '100%',
+    maxHeight: 180,
+    borderRadius: 8,
+    marginBottom: 4,
+    objectFit: 'contain',
+    display: 'block',
+  };
+
   // Mobile: Zeige nur Chat-Liste ODER Chat
   if (isMobile) {
     if (!selectedChat) {
@@ -398,46 +408,61 @@ export default function ChatTab({ user }) {
       {/* Chat-Fenster */}
       <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', p: 2, minWidth: 0 }}>
         {selectedChat ? (
-          <>
-            <Typography variant="h6" gutterBottom>
-              Chat mit {getChatPartnerObj(selectedChat).username}
-            </Typography>
-            <Divider sx={{ mb: 2 }} />
-            <Box sx={{ flex: 1, overflowY: 'auto', mb: 2, bgcolor: '#fafafa', borderRadius: 1, p: 1 }}>
-              <List>
-                {messages.map(msg => (
-                  <ListItem key={msg.id} sx={{ justifyContent: msg.sender_id === user.id ? 'flex-end' : 'flex-start' }}>
-                    <Paper sx={{ p: 1.5, bgcolor: msg.sender_id === user.id ? '#ff4081' : '#eee', color: msg.sender_id === user.id ? 'white' : 'black', borderRadius: 2, maxWidth: '70%' }}>
-                      {msg.image_url && <img src={msg.image_url} alt="Bild" style={{ maxWidth: 180, maxHeight: 180, borderRadius: 8, marginBottom: 4 }} />}
-                      {msg.content && <Typography variant="body2">{msg.content}</Typography>}
-                      <Typography variant="caption" sx={{ opacity: 0.7 }}>{msg.sender_id === user.id ? 'Du' : userMap[msg.sender_id] || `User #${msg.sender_id}`}</Typography>
-                    </Paper>
-                  </ListItem>
-                ))}
-                <div ref={messagesEndRef} />
-              </List>
+          loadingMessages ? (
+            <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <CircularProgress />
             </Box>
-            <Box sx={{ display: 'flex', gap: 1 }}>
-              <IconButton component="label">
-                <ImageIcon />
-                <input type="file" accept="image/*" hidden onChange={handleImageChange} />
-              </IconButton>
-              <TextField
-                value={newMessage}
-                onChange={e => setNewMessage(e.target.value)}
-                fullWidth
-                placeholder="Nachricht schreiben..."
-                onKeyDown={e => { if (e.key === 'Enter') handleSend(); }}
-              />
-              <Button onClick={handleSend} variant="contained">Senden</Button>
-            </Box>
-            {imageToSend && (
-              <Box sx={{ mt: 1, mb: 1 }}>
-                <img src={imageToSend} alt="Vorschau" style={{ maxWidth: 120, maxHeight: 120, borderRadius: 8 }} />
-                <Button size="small" onClick={() => setImageToSend(null)}>Entfernen</Button>
+          ) : (
+            <>
+              <Typography variant="h6" gutterBottom>
+                Chat mit {getChatPartnerObj(selectedChat).username}
+              </Typography>
+              <Divider sx={{ mb: 2 }} />
+              <Box
+                sx={{ flex: 1, overflowY: 'auto', mb: 2, bgcolor: '#fafafa', borderRadius: 1, p: 1 }}
+                ref={messagesListRef}
+                onScroll={handleScroll}
+              >
+                <List>
+                  {loadingMore && (
+                    <ListItem sx={{ justifyContent: 'center' }}>
+                      <CircularProgress size={20} />
+                    </ListItem>
+                  )}
+                  {messages.map(msg => (
+                    <ListItem key={msg.id} sx={{ justifyContent: msg.sender_id === user.id ? 'flex-end' : 'flex-start' }}>
+                      <Paper sx={{ p: 1.5, bgcolor: msg.sender_id === user.id ? '#ff4081' : '#eee', color: msg.sender_id === user.id ? 'white' : 'black', borderRadius: 2, maxWidth: '70%' }}>
+                        {msg.image_url && <img src={msg.image_url} alt="Bild" style={chatImageStyle} />}
+                        {msg.content && <Typography variant="body2">{msg.content}</Typography>}
+                        <Typography variant="caption" sx={{ opacity: 0.7 }}>{msg.sender_id === user.id ? 'Du' : userMap[msg.sender_id] || `User #${msg.sender_id}`}</Typography>
+                      </Paper>
+                    </ListItem>
+                  ))}
+                  <div ref={messagesEndRef} />
+                </List>
               </Box>
-            )}
-          </>
+              <Box sx={{ display: 'flex', gap: 1 }}>
+                <IconButton component="label">
+                  <ImageIcon />
+                  <input type="file" accept="image/*" hidden onChange={handleImageChange} />
+                </IconButton>
+                <TextField
+                  value={newMessage}
+                  onChange={e => setNewMessage(e.target.value)}
+                  fullWidth
+                  placeholder="Nachricht schreiben..."
+                  onKeyDown={e => { if (e.key === 'Enter') handleSend(); }}
+                />
+                <Button onClick={handleSend} variant="contained">Senden</Button>
+              </Box>
+              {imageToSend && (
+                <Box sx={{ mt: 1, mb: 1 }}>
+                  <img src={imageToSend} alt="Vorschau" style={{ maxWidth: 120, maxHeight: 120, borderRadius: 8 }} />
+                  <Button size="small" onClick={() => setImageToSend(null)}>Entfernen</Button>
+                </Box>
+              )}
+            </>
+          )
         ) : (
           <Box sx={{ textAlign: 'center', color: '#aaa', mt: 10 }}>
             <Typography>Wähle einen Chat aus oder starte einen neuen!</Typography>
