@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../supabaseClient';
-import { Box, Typography, TextField, Button, List, ListItem, ListItemText, Alert, Divider, Paper } from '@mui/material';
+import { Box, Typography, TextField, Button, List, ListItem, ListItemText, Alert, Divider, Paper, IconButton, useMediaQuery } from '@mui/material';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import ImageIcon from '@mui/icons-material/Image';
 
 export default function ChatTab({ user }) {
   const [chats, setChats] = useState([]);
@@ -14,6 +16,8 @@ export default function ChatTab({ user }) {
   const [pendingRequests, setPendingRequests] = useState([]);
   const [userMap, setUserMap] = useState({});
   const messagesEndRef = useRef(null);
+  const isMobile = useMediaQuery('(max-width:600px)');
+  const [imageToSend, setImageToSend] = useState(null);
 
   // Lade alle Usernamen für Mapping
   useEffect(() => {
@@ -80,7 +84,6 @@ export default function ChatTab({ user }) {
         table: 'messages',
         filter: `chat_id=eq.${selectedChat.id}`
       }, payload => {
-        // Neue Nachricht oder Update
         if (payload.eventType === 'INSERT') {
           setMessages(msgs => [...msgs, payload.new]);
         }
@@ -123,7 +126,6 @@ export default function ChatTab({ user }) {
   // Anfrage schicken
   const handleRequest = async () => {
     if (!searchResult) return;
-    // Prüfe, ob schon ein Chat existiert
     const { data: existing } = await supabase
       .from('chats')
       .select('*')
@@ -151,13 +153,31 @@ export default function ChatTab({ user }) {
     await supabase.from('chats').update({ status }).eq('id', chatId);
   };
 
-  // Nachricht senden
+  // Nachricht senden (Text oder Bild)
   const handleSend = async () => {
-    if (!newMessage.trim() || !selectedChat) return;
+    if ((!newMessage.trim() && !imageToSend) || !selectedChat) return;
+    let image_url = null;
+    if (imageToSend) {
+      // Bild als Base64 in Supabase speichern (alternativ: Storage nutzen)
+      image_url = imageToSend;
+    }
     await supabase.from('messages').insert([
-      { chat_id: selectedChat.id, sender_id: user.id, content: newMessage }
+      { chat_id: selectedChat.id, sender_id: user.id, content: newMessage, image_url }
     ]);
     setNewMessage('');
+    setImageToSend(null);
+  };
+
+  // Bild auswählen
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImageToSend(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   // Hilfsfunktion: Chatpartner-Objekt
@@ -166,10 +186,119 @@ export default function ChatTab({ user }) {
     return { id: partnerId, username: userMap[partnerId] || `User #${partnerId}` };
   };
 
+  // Mobile: Zeige nur Chat-Liste ODER Chat
+  if (isMobile) {
+    if (!selectedChat) {
+      return (
+        <Box sx={{ p: 2 }}>
+          <Typography variant="h5" gutterBottom>Chats</Typography>
+          {/* Chat-Suche und Anfrage */}
+          <Box sx={{ mb: 3 }}>
+            <Typography variant="h6">Neuen Chat starten</Typography>
+            <Box sx={{ display: 'flex', gap: 2, mb: 1 }}>
+              <TextField
+                label="Username suchen"
+                value={searchUsername}
+                onChange={e => setSearchUsername(e.target.value)}
+                fullWidth
+              />
+              <Button variant="contained" color="primary" onClick={handleSearch}>
+                Suchen
+              </Button>
+            </Box>
+            {error && <Alert severity="error" sx={{ mb: 1 }}>{error}</Alert>}
+            {success && <Alert severity="success" sx={{ mb: 1 }}>{success}</Alert>}
+            {searchResult && (
+              <Box sx={{ mb: 1 }}>
+                <Typography>Gefunden: {searchResult.username} ({searchResult.email})</Typography>
+                <Button variant="contained" color="secondary" onClick={handleRequest}>
+                  Chat-Anfrage senden
+                </Button>
+              </Box>
+            )}
+          </Box>
+          {/* Offene Anfragen */}
+          {pendingRequests.length > 0 && (
+            <Box sx={{ mb: 3 }}>
+              <Typography variant="h6">Offene Chat-Anfragen</Typography>
+              <List>
+                {pendingRequests.map(req => (
+                  <ListItem key={req.id}>
+                    <ListItemText primary={`Von: ${userMap[req.user1_id] || `User #${req.user1_id}`}`} />
+                    <Button color="primary" onClick={() => handleRequestAction(req.id, 'accept')}>Annehmen</Button>
+                    <Button color="secondary" onClick={() => handleRequestAction(req.id, 'declined')}>Ablehnen</Button>
+                  </ListItem>
+                ))}
+              </List>
+            </Box>
+          )}
+          <Typography variant="h6">Deine Chats</Typography>
+          <List>
+            {chats.filter(c => c.status === 'accepted').map(chat => {
+              const partner = getChatPartnerObj(chat);
+              return (
+                <ListItem button key={chat.id} selected={selectedChat?.id === chat.id} onClick={() => setSelectedChat(chat)}>
+                  <ListItemText primary={`Chat mit ${partner.username}`} />
+                </ListItem>
+              );
+            })}
+          </List>
+        </Box>
+      );
+    } else {
+      // Mobile: Chat-Vollansicht mit Zurück-Button
+      const partner = getChatPartnerObj(selectedChat);
+      return (
+        <Box sx={{ p: 2, height: '100vh', display: 'flex', flexDirection: 'column' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+            <IconButton onClick={() => setSelectedChat(null)}><ArrowBackIcon /></IconButton>
+            <Typography variant="h6" sx={{ ml: 1 }}>Chat mit {partner.username}</Typography>
+          </Box>
+          <Divider sx={{ mb: 2 }} />
+          <Box sx={{ flex: 1, overflowY: 'auto', mb: 2, bgcolor: '#fafafa', borderRadius: 1, p: 1 }}>
+            <List>
+              {messages.map(msg => (
+                <ListItem key={msg.id} sx={{ justifyContent: msg.sender_id === user.id ? 'flex-end' : 'flex-start' }}>
+                  <Paper sx={{ p: 1.5, bgcolor: msg.sender_id === user.id ? '#ff4081' : '#eee', color: msg.sender_id === user.id ? 'white' : 'black', borderRadius: 2, maxWidth: '70%' }}>
+                    {msg.image_url && <img src={msg.image_url} alt="Bild" style={{ maxWidth: 180, maxHeight: 180, borderRadius: 8, marginBottom: 4 }} />}
+                    {msg.content && <Typography variant="body2">{msg.content}</Typography>}
+                    <Typography variant="caption" sx={{ opacity: 0.7 }}>{msg.sender_id === user.id ? 'Du' : userMap[msg.sender_id] || `User #${msg.sender_id}`}</Typography>
+                  </Paper>
+                </ListItem>
+              ))}
+              <div ref={messagesEndRef} />
+            </List>
+          </Box>
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            <IconButton component="label">
+              <ImageIcon />
+              <input type="file" accept="image/*" hidden onChange={handleImageChange} />
+            </IconButton>
+            <TextField
+              value={newMessage}
+              onChange={e => setNewMessage(e.target.value)}
+              fullWidth
+              placeholder="Nachricht schreiben..."
+              onKeyDown={e => { if (e.key === 'Enter') handleSend(); }}
+            />
+            <Button onClick={handleSend} variant="contained">Senden</Button>
+          </Box>
+          {imageToSend && (
+            <Box sx={{ mt: 1, mb: 1 }}>
+              <img src={imageToSend} alt="Vorschau" style={{ maxWidth: 120, maxHeight: 120, borderRadius: 8 }} />
+              <Button size="small" onClick={() => setImageToSend(null)}>Entfernen</Button>
+            </Box>
+          )}
+        </Box>
+      );
+    }
+  }
+
+  // Desktop: Chat-Liste links, Chat rechts
   return (
     <Box sx={{ display: 'flex', height: '70vh', maxWidth: 1000, mx: 'auto', mt: 2, bgcolor: '#fff', borderRadius: 2, boxShadow: 2 }}>
       {/* Chat-Liste */}
-      <Box sx={{ width: { xs: '100%', md: 300 }, borderRight: { md: '1px solid #eee' }, p: 2, overflowY: 'auto' }}>
+      <Box sx={{ width: 300, borderRight: '1px solid #eee', p: 2, overflowY: 'auto' }}>
         <Typography variant="h5" gutterBottom>Chats</Typography>
         {/* Chat-Suche und Anfrage */}
         <Box sx={{ mb: 3 }}>
@@ -236,7 +365,8 @@ export default function ChatTab({ user }) {
                 {messages.map(msg => (
                   <ListItem key={msg.id} sx={{ justifyContent: msg.sender_id === user.id ? 'flex-end' : 'flex-start' }}>
                     <Paper sx={{ p: 1.5, bgcolor: msg.sender_id === user.id ? '#ff4081' : '#eee', color: msg.sender_id === user.id ? 'white' : 'black', borderRadius: 2, maxWidth: '70%' }}>
-                      <Typography variant="body2">{msg.content}</Typography>
+                      {msg.image_url && <img src={msg.image_url} alt="Bild" style={{ maxWidth: 180, maxHeight: 180, borderRadius: 8, marginBottom: 4 }} />}
+                      {msg.content && <Typography variant="body2">{msg.content}</Typography>}
                       <Typography variant="caption" sx={{ opacity: 0.7 }}>{msg.sender_id === user.id ? 'Du' : userMap[msg.sender_id] || `User #${msg.sender_id}`}</Typography>
                     </Paper>
                   </ListItem>
@@ -244,7 +374,11 @@ export default function ChatTab({ user }) {
                 <div ref={messagesEndRef} />
               </List>
             </Box>
-            <Box sx={{ display: 'flex', gap: 2 }}>
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <IconButton component="label">
+                <ImageIcon />
+                <input type="file" accept="image/*" hidden onChange={handleImageChange} />
+              </IconButton>
               <TextField
                 value={newMessage}
                 onChange={e => setNewMessage(e.target.value)}
@@ -254,6 +388,12 @@ export default function ChatTab({ user }) {
               />
               <Button onClick={handleSend} variant="contained">Senden</Button>
             </Box>
+            {imageToSend && (
+              <Box sx={{ mt: 1, mb: 1 }}>
+                <img src={imageToSend} alt="Vorschau" style={{ maxWidth: 120, maxHeight: 120, borderRadius: 8 }} />
+                <Button size="small" onClick={() => setImageToSend(null)}>Entfernen</Button>
+              </Box>
+            )}
           </>
         ) : (
           <Box sx={{ textAlign: 'center', color: '#aaa', mt: 10 }}>
