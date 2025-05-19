@@ -40,6 +40,8 @@ import SportsEsportsIcon from '@mui/icons-material/SportsEsports';
 import QuizIcon from '@mui/icons-material/Quiz';
 import CompareIcon from '@mui/icons-material/Compare';
 import { supabase } from './supabaseClient';
+import Register from './components/Register';
+import Login from './components/Login';
 
 function TabPanel({ children, value, index }) {
   return (
@@ -670,6 +672,7 @@ function GamesTab({ wordleWords }) {
 }
 
 function App() {
+  const [user, setUser] = useState(null);
   const [tabValue, setTabValue] = useState(0);
   const [memories, setMemories] = useState([]);
   const [newMemory, setNewMemory] = useState({
@@ -680,6 +683,7 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [wordleWords, setWordleWords] = useState([]);
+  const [showRegister, setShowRegister] = useState(false);
 
   useEffect(() => {
     // Erinnerungen aus Supabase laden
@@ -755,6 +759,40 @@ function App() {
       reader.readAsDataURL(file);
     }
   };
+
+  if (!user) {
+    return (
+      <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: '#f5f5f5' }}>
+        <Box sx={{ width: '100%', maxWidth: 400, p: 2 }}>
+          <Typography variant="h3" align="center" gutterBottom sx={{ fontWeight: 700, color: '#ff4081' }}>
+            Willkommen bei Alicas Zeitkapsel
+          </Typography>
+          <Typography variant="h6" align="center" gutterBottom>
+            Bitte logge dich ein oder registriere dich, um fortzufahren.
+          </Typography>
+          {!showRegister ? (
+            <>
+              <Login onLogin={setUser} />
+              <Box sx={{ textAlign: 'center', mt: 2 }}>
+                <Button variant="text" onClick={() => setShowRegister(true)}>
+                  Noch keinen Account? Jetzt registrieren
+                </Button>
+              </Box>
+            </>
+          ) : (
+            <>
+              <Register onRegister={() => setShowRegister(false)} />
+              <Box sx={{ textAlign: 'center', mt: 2 }}>
+                <Button variant="text" onClick={() => setShowRegister(false)}>
+                  Zurück zum Login
+                </Button>
+              </Box>
+            </>
+          )}
+        </Box>
+      </Box>
+    );
+  }
 
   return (
     <Container maxWidth="md">
