@@ -42,6 +42,7 @@ import CompareIcon from '@mui/icons-material/Compare';
 import { supabase } from './supabaseClient';
 import Register from './components/Register';
 import Login from './components/Login';
+import MusicTab from './components/MusicTab';
 
 function TabPanel({ children, value, index }) {
   return (
@@ -841,12 +842,7 @@ function App() {
           </TabPanel>
 
           <TabPanel value={tabValue} index={2}>
-            <Typography variant="h5" gutterBottom>
-              Unsere Favoriten
-            </Typography>
-            <Typography>
-              Hier werden deine liebsten Erinnerungen gespeichert.
-            </Typography>
+            <MusicTab user={user} />
           </TabPanel>
         </Paper>
       </Box>
