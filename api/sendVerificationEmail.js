@@ -9,10 +9,10 @@ export default async function handler(req, res) {
 
   try {
     await resend.emails.send({
-      from: 'Deine App <noreply@deine-domain.de>',
+      from: 'Alicas-App <noreply@alicas-app.de>',
       to: email,
       subject: 'Bitte bestätige deine E-Mail',
-      html: `<a href="https://dein-projekt.vercel.app/api/verify?token=${token}">Klicke hier, um deine E-Mail zu bestätigen</a>`
+      html: `<a href="https://www.alicas-app.de/api/verify?token=${token}">Klicke hier, um deine E-Mail zu bestätigen</a>`
     });
     res.status(200).json({ success: true });
   } catch (err) {
