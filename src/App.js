@@ -43,6 +43,7 @@ import { supabase } from './supabaseClient';
 import Register from './components/Register';
 import Login from './components/Login';
 import MusicTab from './components/MusicTab';
+import ChatTab from './components/ChatTab';
 
 function TabPanel({ children, value, index }) {
   return (
@@ -817,7 +818,8 @@ function App() {
           >
             <Tab icon={<AccessTimeIcon />} label="Zeitkapsel" />
             <Tab icon={<SportsEsportsIcon />} label="Spiele" />
-            <Tab icon={<FavoriteIcon />} label="Favoriten" />
+            <Tab icon={<FavoriteIcon />} label="Musik" />
+            <Tab icon={<MessageIcon />} label="Chat" />
           </Tabs>
 
           <TabPanel value={tabValue} index={0}>
@@ -843,6 +845,10 @@ function App() {
 
           <TabPanel value={tabValue} index={2}>
             <MusicTab user={user} />
+          </TabPanel>
+
+          <TabPanel value={tabValue} index={3}>
+            <ChatTab user={user} />
           </TabPanel>
         </Paper>
       </Box>
