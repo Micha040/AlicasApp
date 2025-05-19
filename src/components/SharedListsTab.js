@@ -213,7 +213,49 @@ export default function SharedListsTab({ user }) {
             {invitations.map(invite => (
               <ListItem key={invite.id}>
                 <ListItemText primary={`Einladung zu: ${invite.shared_lists.name}`} />
-                <Chip label="Ausstehend" color="warning" />
+                <Button
+                  color="success"
+                  variant="contained"
+                  size="small"
+                  sx={{ mr: 1 }}
+                  onClick={async () => {
+                    await supabase
+                      .from('shared_list_members')
+                      .update({ status: 'accepted', accepted_at: new Date().toISOString() })
+                      .eq('id', invite.id);
+                    // Einladungen und Listen neu laden
+                    const { data: newInv } = await supabase
+                      .from('shared_list_members')
+                      .select('*, shared_lists(name)')
+                      .eq('user_id', user.id)
+                      .eq('status', 'pending');
+                    setInvitations(newInv || []);
+                    const { data: newLists } = await supabase.rpc('get_user_lists', { user_id: user.id });
+                    setLists(newLists || []);
+                  }}
+                >
+                  Annehmen
+                </Button>
+                <Button
+                  color="error"
+                  variant="outlined"
+                  size="small"
+                  onClick={async () => {
+                    await supabase
+                      .from('shared_list_members')
+                      .update({ status: 'declined' })
+                      .eq('id', invite.id);
+                    // Einladungen neu laden
+                    const { data: newInv } = await supabase
+                      .from('shared_list_members')
+                      .select('*, shared_lists(name)')
+                      .eq('user_id', user.id)
+                      .eq('status', 'pending');
+                    setInvitations(newInv || []);
+                  }}
+                >
+                  Ablehnen
+                </Button>
               </ListItem>
             ))}
           </List>
