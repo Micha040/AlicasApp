@@ -674,7 +674,10 @@ function GamesTab({ wordleWords }) {
 }
 
 function App() {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(() => {
+    const stored = localStorage.getItem('user');
+    return stored ? JSON.parse(stored) : null;
+  });
   const [tabValue, setTabValue] = useState(0);
   const [memories, setMemories] = useState([]);
   const [newMemory, setNewMemory] = useState({
@@ -762,6 +765,17 @@ function App() {
     }
   };
 
+  // User-Session auch in localStorage speichern
+  const handleLogin = (userData) => {
+    setUser(userData);
+    localStorage.setItem('user', JSON.stringify(userData));
+  };
+
+  const handleLogout = () => {
+    setUser(null);
+    localStorage.removeItem('user');
+  };
+
   if (!user) {
     return (
       <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: '#f5f5f5' }}>
@@ -774,7 +788,7 @@ function App() {
           </Typography>
           {!showRegister ? (
             <>
-              <Login onLogin={setUser} />
+              <Login onLogin={handleLogin} />
               <Box sx={{ textAlign: 'center', mt: 2 }}>
                 <Button variant="text" onClick={() => setShowRegister(true)}>
                   Noch keinen Account? Jetzt registrieren
@@ -797,7 +811,10 @@ function App() {
   }
 
   return (
-    <Container maxWidth="md">
+    <Container maxWidth="md" sx={{ position: 'relative' }}>
+      <Button onClick={handleLogout} color="secondary" sx={{ position: 'absolute', top: 16, right: 16 }}>
+        Logout
+      </Button>
       <Box sx={{ my: 4, textAlign: 'center' }}>
         <motion.div
           initial={{ opacity: 0, y: -20 }}
