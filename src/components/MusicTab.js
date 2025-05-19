@@ -43,6 +43,7 @@ export default function MusicTab({ user }) {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(null);
 
   useEffect(() => {
     // Lade alle geposteten Songs
@@ -80,16 +81,16 @@ export default function MusicTab({ user }) {
     if (!searchResult) return;
     setError('');
     setSuccess('');
-    const { spotify_id, title, artist, cover_url } = searchResult;
+    const { spotify_id, title, artist, cover_url, preview_url } = searchResult;
     const posted_by = user?.username || 'Unbekannt';
     const { error: dbError } = await supabase
       .from('favorite_songs')
-      .insert([{ spotify_id, title, artist, cover_url, posted_by }]);
+      .insert([{ spotify_id, title, artist, cover_url, posted_by, preview_url }]);
     if (dbError) {
       setError('Fehler beim Speichern!');
     } else {
       setSuccess('Song erfolgreich gepostet!');
-      setSongs([{ spotify_id, title, artist, cover_url, posted_by, created_at: new Date().toISOString() }, ...songs]);
+      setSongs([{ spotify_id, title, artist, cover_url, posted_by, preview_url, created_at: new Date().toISOString() }, ...songs]);
       setSearchResult(null);
       setQuery('');
     }
@@ -139,32 +140,52 @@ export default function MusicTab({ user }) {
       <Typography variant="h6" sx={{ mt: 4, mb: 2 }}>Alle geposteten Songs</Typography>
       <List>
         {songs.map(song => (
-          <ListItem key={song.spotify_id + song.created_at} alignItems="flex-start">
-            <ListItemAvatar>
-              <Avatar src={song.cover_url} alt={song.title} />
-            </ListItemAvatar>
-            <ListItemText
-              primary={song.title + ' – ' + song.artist}
-              secondary={
-                <>
-                  {song.posted_by && <span>Vorgeschlagen von: {song.posted_by} · </span>}
-                  {song.created_at && new Date(song.created_at).toLocaleString()}
-                </>
-              }
-            />
-            {song.spotify_id && (
-              <Button
-                href={`https://open.spotify.com/track/${song.spotify_id}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                variant="outlined"
-                size="small"
-                sx={{ ml: 2 }}
-              >
-                Auf Spotify öffnen
-              </Button>
+          <React.Fragment key={song.spotify_id + song.created_at}>
+            <ListItem alignItems="flex-start">
+              <ListItemAvatar>
+                <Avatar src={song.cover_url} alt={song.title} />
+              </ListItemAvatar>
+              <ListItemText
+                primary={song.title + ' – ' + song.artist}
+                secondary={
+                  <>
+                    {song.posted_by && <span>Vorgeschlagen von: {song.posted_by} · </span>}
+                    {song.created_at && new Date(song.created_at).toLocaleString()}
+                  </>
+                }
+              />
+              {song.preview_url && (
+                <Button
+                  variant="contained"
+                  color={previewOpen === song.spotify_id ? 'secondary' : 'primary'}
+                  size="small"
+                  sx={{ ml: 1 }}
+                  onClick={() => setPreviewOpen(previewOpen === song.spotify_id ? null : song.spotify_id)}
+                >
+                  {previewOpen === song.spotify_id ? 'Schließen' : 'Preview'}
+                </Button>
+              )}
+              {song.spotify_id && (
+                <Button
+                  href={`https://open.spotify.com/track/${song.spotify_id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  variant="outlined"
+                  size="small"
+                  sx={{ ml: 2 }}
+                >
+                  Auf Spotify öffnen
+                </Button>
+              )}
+            </ListItem>
+            {previewOpen === song.spotify_id && song.preview_url && (
+              <Box sx={{ pl: 10, pb: 2 }}>
+                <audio controls autoPlay src={song.preview_url}>
+                  Dein Browser unterstützt kein Audio.
+                </audio>
+              </Box>
             )}
-          </ListItem>
+          </React.Fragment>
         ))}
       </List>
     </Box>
