@@ -52,8 +52,11 @@ import MusicTab from './components/MusicTab';
 import ChatTab from './components/ChatTab';
 
 function HideOnScroll(props) {
-  const { children } = props;
+  const { children, setAppBarHidden } = props;
   const trigger = useScrollTrigger({ threshold: 80 });
+  React.useEffect(() => {
+    if (setAppBarHidden) setAppBarHidden(trigger);
+  }, [trigger, setAppBarHidden]);
   return (
     <Slide appear={false} direction="down" in={!trigger}>
       {children}
@@ -705,6 +708,7 @@ function App() {
   const [error, setError] = useState('');
   const [wordleWords, setWordleWords] = useState([]);
   const [showRegister, setShowRegister] = useState(false);
+  const [appBarHidden, setAppBarHidden] = useState(false);
 
   useEffect(() => {
     // Erinnerungen aus Supabase laden
@@ -829,7 +833,7 @@ function App() {
   return (
     <Box sx={{ bgcolor: '#f5f5f5', minHeight: '100vh' }}>
       {/* Schmale AppBar oben, verschwindet beim Scrollen */}
-      <HideOnScroll>
+      <HideOnScroll setAppBarHidden={setAppBarHidden}>
         <AppBar position="sticky" color="default" elevation={0} sx={{ borderBottom: 1, borderColor: 'divider', height: 56, justifyContent: 'center' }}>
           <Toolbar sx={{ minHeight: 56, px: 2, display: 'flex', justifyContent: 'space-between' }}>
             <IconButton size="large" edge="start" color="inherit">
@@ -842,8 +846,17 @@ function App() {
           </Toolbar>
         </AppBar>
       </HideOnScroll>
-      {/* Sticky Tab-Leiste darunter */}
-      <AppBar position="sticky" color="inherit" elevation={1} sx={{ top: 56, zIndex: 1100 }}>
+      {/* Sticky Tab-Leiste darunter, rutscht nach oben wenn AppBar versteckt ist */}
+      <AppBar
+        position="sticky"
+        color="inherit"
+        elevation={1}
+        sx={{
+          top: appBarHidden ? 0 : 56,
+          zIndex: 1100,
+          transition: 'top 0.3s',
+        }}
+      >
         <Tabs
           value={tabValue}
           onChange={handleTabChange}
