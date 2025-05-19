@@ -17,6 +17,7 @@ import {
   IconButton
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
+import SettingsIcon from '@mui/icons-material/Settings';
 
 export default function SharedListsTab({ user }) {
   const [lists, setLists] = useState([]);
@@ -26,6 +27,11 @@ export default function SharedListsTab({ user }) {
   const [selectedList, setSelectedList] = useState(null);
   const [listItems, setListItems] = useState([]);
   const [newItem, setNewItem] = useState('');
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [members, setMembers] = useState([]);
+  const [inviteUsername, setInviteUsername] = useState('');
+  const [inviteError, setInviteError] = useState('');
+  const [inviteSuccess, setInviteSuccess] = useState('');
 
   // Lade Listen, an denen der User beteiligt ist
   useEffect(() => {
@@ -119,6 +125,63 @@ export default function SharedListsTab({ user }) {
     setListItems(data || []);
   };
 
+  // Mitglieder laden
+  const fetchMembers = async () => {
+    if (!selectedList) return;
+    const { data } = await supabase
+      .from('shared_list_members')
+      .select('*, users(username)')
+      .eq('list_id', selectedList.id)
+      .eq('status', 'accepted');
+    setMembers(data || []);
+  };
+
+  // Öffne Einstellungen (Mitglieder)
+  const handleOpenSettings = async () => {
+    await fetchMembers();
+    setSettingsOpen(true);
+    setInviteUsername('');
+    setInviteError('');
+    setInviteSuccess('');
+  };
+
+  // User einladen
+  const handleInvite = async () => {
+    setInviteError('');
+    setInviteSuccess('');
+    if (!inviteUsername.trim()) return;
+    // User suchen
+    const { data: userToInvite } = await supabase
+      .from('users')
+      .select('id,username')
+      .eq('username', inviteUsername)
+      .single();
+    if (!userToInvite) {
+      setInviteError('User nicht gefunden!');
+      return;
+    }
+    // Prüfen, ob schon eingeladen/Teilnehmer
+    const { data: existing } = await supabase
+      .from('shared_list_members')
+      .select('*')
+      .eq('list_id', selectedList.id)
+      .eq('user_id', userToInvite.id)
+      .maybeSingle();
+    if (existing) {
+      setInviteError('User ist bereits eingeladen oder Mitglied!');
+      return;
+    }
+    // Einladung speichern
+    await supabase.from('shared_list_members').insert({
+      list_id: selectedList.id,
+      user_id: userToInvite.id,
+      status: 'pending'
+    });
+    setInviteSuccess('Einladung verschickt!');
+    setInviteUsername('');
+    await fetchMembers();
+  };
+
   return (
     <Box>
       <Typography variant="h5" gutterBottom>Gemeinsame Listen</Typography>
@@ -169,7 +232,12 @@ export default function SharedListsTab({ user }) {
 
       {/* Listen-Detail-Dialog */}
       <Dialog open={!!selectedList} onClose={() => setSelectedList(null)} maxWidth="sm" fullWidth>
-        <DialogTitle>Liste: {selectedList?.name}</DialogTitle>
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span>Liste: {selectedList?.name}</span>
+          <IconButton onClick={handleOpenSettings}>
+            <SettingsIcon />
+          </IconButton>
+        </DialogTitle>
         <DialogContent>
           <Box sx={{ mb: 2 }}>
             <TextField
@@ -204,6 +272,38 @@ export default function SharedListsTab({ user }) {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setSelectedList(null)}>Schließen</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Mitglieder-/Einladen-Dialog */}
+      <Dialog open={settingsOpen} onClose={() => setSettingsOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>Mitglieder verwalten</DialogTitle>
+        <DialogContent>
+          <Typography variant="subtitle1" sx={{ mb: 1 }}>Mitglieder:</Typography>
+          <List>
+            {members.map(m => (
+              <ListItem key={m.id}>
+                <ListItemText primary={m.users?.username || m.user_id} />
+                <Chip label={m.status === 'accepted' ? 'Mitglied' : m.status} color={m.status === 'accepted' ? 'success' : 'warning'} size="small" />
+              </ListItem>
+            ))}
+          </List>
+          <Box sx={{ mt: 2 }}>
+            <Typography variant="subtitle2">Neues Mitglied einladen</Typography>
+            <TextField
+              label="Username"
+              value={inviteUsername}
+              onChange={e => setInviteUsername(e.target.value)}
+              fullWidth
+              sx={{ mt: 1, mb: 1 }}
+            />
+            <Button onClick={handleInvite} variant="contained">Einladen</Button>
+            {inviteError && <Typography color="error" sx={{ mt: 1 }}>{inviteError}</Typography>}
+            {inviteSuccess && <Typography color="success.main" sx={{ mt: 1 }}>{inviteSuccess}</Typography>}
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setSettingsOpen(false)}>Schließen</Button>
         </DialogActions>
       </Dialog>
     </Box>
