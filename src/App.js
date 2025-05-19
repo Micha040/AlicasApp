@@ -53,6 +53,7 @@ import MusicTab from './components/MusicTab';
 import ChatTab from './components/ChatTab';
 import ProfileDialog from './components/ProfileDialog';
 import SharedListsTab from './components/SharedListsTab';
+import MinesweeperTab from './components/MinesweeperTab';
 
 function HideOnScroll(props) {
   const { children, setAppBarHidden } = props;
@@ -303,7 +304,7 @@ function MemoryGame() {
 function GameSelection({ onSelectGame }) {
   const games = [
     { id: 'memory', name: 'Memory', icon: <PhotoLibraryIcon />, description: 'Finde die passenden Paare!' },
-    { id: 'quiz', name: 'Liebes-Quiz', icon: <QuizIcon />, description: 'Teste dein Wissen über uns!' },
+    { id: 'minesweeper', name: 'Minesweeper', icon: <QuizIcon />, description: 'Finde alle Minen ohne sie zu treffen!' },
     { id: 'wordle', name: 'Wordle', icon: <CompareIcon />, description: 'Rate das Wort in 6 Versuchen!' }
   ];
 
@@ -344,110 +345,6 @@ function GameSelection({ onSelectGame }) {
           </Grid>
         ))}
       </Grid>
-    </Box>
-  );
-}
-
-function LoveQuiz() {
-  const [currentQuestion, setCurrentQuestion] = useState(0);
-  const [score, setScore] = useState(0);
-  const [showResult, setShowResult] = useState(false);
-  const [selectedAnswer, setSelectedAnswer] = useState('');
-
-  const questions = [
-    {
-      question: "Was ist unser Lieblingsessen?",
-      options: ["Pizza", "Sushi", "Pasta", "Burger"],
-      correctAnswer: "Pizza"
-    },
-    {
-      question: "Wo haben wir uns kennengelernt?",
-      options: ["In der Uni", "Im Park", "Bei Freunden", "Online"],
-      correctAnswer: "Bei Freunden"
-    },
-    {
-      question: "Was ist unser Lieblingsfilm?",
-      options: ["Titanic", "Notebook", "La La Land", "The Holiday"],
-      correctAnswer: "Notebook"
-    }
-  ];
-
-  const handleAnswer = () => {
-    if (selectedAnswer === questions[currentQuestion].correctAnswer) {
-      setScore(score + 1);
-    }
-
-    if (currentQuestion + 1 < questions.length) {
-      setCurrentQuestion(currentQuestion + 1);
-      setSelectedAnswer('');
-    } else {
-      setShowResult(true);
-    }
-  };
-
-  const resetQuiz = () => {
-    setCurrentQuestion(0);
-    setScore(0);
-    setShowResult(false);
-    setSelectedAnswer('');
-  };
-
-  if (showResult) {
-    return (
-      <Box sx={{ textAlign: 'center' }}>
-        <Typography variant="h5" gutterBottom>
-          Quiz beendet!
-        </Typography>
-        <Typography variant="h6" gutterBottom>
-          Dein Ergebnis: {score} von {questions.length}
-        </Typography>
-        <Button 
-          variant="contained" 
-          color="primary" 
-          onClick={resetQuiz}
-          sx={{ mt: 2 }}
-        >
-          Noch einmal spielen
-        </Button>
-      </Box>
-    );
-  }
-
-  return (
-    <Box sx={{ maxWidth: 600, mx: 'auto', p: 2 }}>
-      <Typography variant="h5" gutterBottom>
-        Frage {currentQuestion + 1} von {questions.length}
-      </Typography>
-      <Card sx={{ mb: 3 }}>
-        <CardContent>
-          <Typography variant="h6" gutterBottom>
-            {questions[currentQuestion].question}
-          </Typography>
-          <FormControl component="fieldset">
-            <RadioGroup
-              value={selectedAnswer}
-              onChange={(e) => setSelectedAnswer(e.target.value)}
-            >
-              {questions[currentQuestion].options.map((option) => (
-                <FormControlLabel
-                  key={option}
-                  value={option}
-                  control={<Radio />}
-                  label={option}
-                />
-              ))}
-            </RadioGroup>
-          </FormControl>
-        </CardContent>
-      </Card>
-      <Button
-        variant="contained"
-        color="primary"
-        onClick={handleAnswer}
-        disabled={!selectedAnswer}
-      >
-        Antwort prüfen
-      </Button>
     </Box>
   );
 }
@@ -680,8 +577,8 @@ function GamesTab({ wordleWords }) {
     switch (selectedGame) {
       case 'memory':
         return <MemoryGame />;
-      case 'quiz':
-        return <LoveQuiz />;
+      case 'minesweeper':
+        return <MinesweeperTab />;
       case 'wordle':
         return <Wordle wordleWords={wordleWords} />;
       default:
