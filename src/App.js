@@ -468,23 +468,12 @@ function Wordle({ wordleWords }) {
   const startNewGame = () => {
     if (wordleWords.length === 0) return;
     const randomWord = wordleWords[Math.floor(Math.random() * wordleWords.length)];
-    console.log('Neues Wort:', randomWord); // Für Debugging
     setTargetWord(randomWord);
     setGuesses([]);
     setCurrentGuess('');
     setGameOver(false);
     setMessage('');
     setError('');
-  };
-
-  const handleKeyPress = (e) => {
-    if (gameOver) return;
-
-    if (e.key === 'Backspace') {
-      setCurrentGuess(currentGuess.slice(0, -1));
-    } else if (/^[A-Za-z]$/.test(e.key) && currentGuess.length < targetWord.length) {
-      setCurrentGuess(currentGuess + e.key.toUpperCase());
-    }
   };
 
   // Überprüfen-Button Funktion
@@ -531,11 +520,6 @@ function Wordle({ wordleWords }) {
     return result;
   };
 
-  useEffect(() => {
-    window.addEventListener('keydown', handleKeyPress);
-    return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [currentGuess, gameOver, targetWord]);
-
   return (
     <Box sx={{ textAlign: 'center', maxWidth: 500, mx: 'auto' }}>
       <Typography variant="h5" gutterBottom>
@@ -575,7 +559,7 @@ function Wordle({ wordleWords }) {
             setCurrentGuess(value);
           }
         }}
-        onKeyDown={handleKeyPress}
+        onBlur={(e) => e.target.blur()}
       />
 
       <Box sx={{ mb: 2 }}>
