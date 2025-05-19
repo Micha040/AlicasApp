@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../supabaseClient';
-import { Box, Typography, TextField, Button, List, ListItem, ListItemText, Alert, Divider, Paper, IconButton, useMediaQuery, CircularProgress } from '@mui/material';
+import { Box, Typography, TextField, Button, List, ListItem, ListItemText, Alert, Divider, Paper, IconButton, useMediaQuery, CircularProgress, Avatar, Card, CardActionArea } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ImageIcon from '@mui/icons-material/Image';
 
@@ -26,30 +26,59 @@ export default function ChatTab({ user }) {
   const isMobile = useMediaQuery('(max-width:600px)');
   const [oldestMessageId, setOldestMessageId] = useState(null);
 
-  // Lade alle Usernamen für Mapping
+  // Lade alle Usernamen und Avatare für Mapping
   useEffect(() => {
     const fetchUsers = async () => {
       const { data } = await supabase.from('users').select('id,username');
+      const { data: profiles } = await supabase.from('profiles').select('id,avatar_url');
       if (data) {
         const map = {};
-        data.forEach(u => { map[u.id] = u.username; });
+        data.forEach(u => {
+          map[u.id] = { username: u.username };
+        });
+        if (profiles) {
+          profiles.forEach(p => {
+            if (map[p.id]) map[p.id].avatar_url = p.avatar_url;
+          });
+        }
         setUserMap(map);
       }
     };
     fetchUsers();
   }, []);
 
+  // Realtime für Chats (neue Einladungen, akzeptierte Chats)
+  useEffect(() => {
+    const channel = supabase.channel('chats-realtime')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'chats',
+        filter: `user1_id=eq.${user.id}`
+      }, () => fetchChats())
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'chats',
+        filter: `user2_id=eq.${user.id}`
+      }, () => fetchChats())
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
+
   // Lade alle Chats des Users
+  const fetchChats = async () => {
+    const { data } = await supabase
+      .from('chats')
+      .select('*')
+      .or(`user1_id.eq.${user.id},user2_id.eq.${user.id}`)
+      .order('created_at', { ascending: false });
+    setChats(data || []);
+  };
   useEffect(() => {
     if (!user) return;
-    const fetchChats = async () => {
-      const { data } = await supabase
-        .from('chats')
-        .select('*')
-        .or(`user1_id.eq.${user.id},user2_id.eq.${user.id}`)
-        .order('created_at', { ascending: false });
-      setChats(data || []);
-    };
     fetchChats();
   }, [user]);
 
@@ -226,7 +255,11 @@ export default function ChatTab({ user }) {
   // Hilfsfunktion: Chatpartner-Objekt
   const getChatPartnerObj = (chat) => {
     const partnerId = chat.user1_id === user.id ? chat.user2_id : chat.user1_id;
-    return { id: partnerId, username: userMap[partnerId] || `User #${partnerId}` };
+    return {
+      id: partnerId,
+      username: userMap[partnerId]?.username || `User #${partnerId}`,
+      avatar_url: userMap[partnerId]?.avatar_url || undefined
+    };
   };
 
   // Bild-Styles für Nachrichten
@@ -275,13 +308,17 @@ export default function ChatTab({ user }) {
             <Box sx={{ mb: 3 }}>
               <Typography variant="h6">Offene Chat-Anfragen</Typography>
               <List>
-                {pendingRequests.map(req => (
-                  <ListItem key={req.id}>
-                    <ListItemText primary={`Von: ${userMap[req.user1_id] || `User #${req.user1_id}`}`} />
-                    <Button color="primary" onClick={() => handleRequestAction(req.id, 'accept')}>Annehmen</Button>
-                    <Button color="secondary" onClick={() => handleRequestAction(req.id, 'declined')}>Ablehnen</Button>
-                  </ListItem>
-                ))}
+                {pendingRequests.map(req => {
+                  const partner = getChatPartnerObj(req);
+                  return (
+                    <ListItem key={req.id}>
+                      <Avatar src={partner.avatar_url} sx={{ width: 32, height: 32, mr: 1 }} />
+                      <ListItemText primary={`Von: ${partner.username}`} />
+                      <Button color="primary" onClick={() => handleRequestAction(req.id, 'accept')}>Annehmen</Button>
+                      <Button color="secondary" onClick={() => handleRequestAction(req.id, 'declined')}>Ablehnen</Button>
+                    </ListItem>
+                  );
+                })}
               </List>
             </Box>
           )}
@@ -290,9 +327,14 @@ export default function ChatTab({ user }) {
             {chats.filter(c => c.status === 'accepted').map(chat => {
               const partner = getChatPartnerObj(chat);
               return (
-                <ListItem button key={chat.id} selected={selectedChat?.id === chat.id} onClick={() => setSelectedChat(chat)}>
-                  <ListItemText primary={`Chat mit ${partner.username}`} />
-                </ListItem>
+                <Card key={chat.id} sx={{ mb: 2, boxShadow: 2, borderRadius: 2, bgcolor: selectedChat?.id === chat.id ? '#ffe4f3' : '#fff' }}>
+                  <CardActionArea onClick={() => setSelectedChat(chat)}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', p: 1 }}>
+                      <Avatar src={partner.avatar_url} sx={{ width: 36, height: 36, mr: 2 }} />
+                      <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>{partner.username}</Typography>
+                    </Box>
+                  </CardActionArea>
+                </Card>
               );
             })}
           </List>
@@ -330,7 +372,7 @@ export default function ChatTab({ user }) {
                       <Paper sx={{ p: 1.5, bgcolor: msg.sender_id === user.id ? '#ff4081' : '#eee', color: msg.sender_id === user.id ? 'white' : 'black', borderRadius: 2, maxWidth: '70%' }}>
                         {msg.image_url && <img src={msg.image_url} alt="Bild" style={chatImageStyle} />}
                         {msg.content && <Typography variant="body2">{msg.content}</Typography>}
-                        <Typography variant="caption" sx={{ opacity: 0.7 }}>{msg.sender_id === user.id ? 'Du' : userMap[msg.sender_id] || `User #${msg.sender_id}`}</Typography>
+                        <Typography variant="caption" sx={{ opacity: 0.7 }}>{msg.sender_id === user.id ? 'Du' : userMap[msg.sender_id]?.username || `User #${msg.sender_id}`}</Typography>
                       </Paper>
                     </ListItem>
                   ))}
@@ -400,13 +442,17 @@ export default function ChatTab({ user }) {
           <Box sx={{ mb: 3 }}>
             <Typography variant="h6">Offene Chat-Anfragen</Typography>
             <List>
-              {pendingRequests.map(req => (
-                <ListItem key={req.id}>
-                  <ListItemText primary={`Von: ${userMap[req.user1_id] || `User #${req.user1_id}`}`} />
-                  <Button color="primary" onClick={() => handleRequestAction(req.id, 'accept')}>Annehmen</Button>
-                  <Button color="secondary" onClick={() => handleRequestAction(req.id, 'declined')}>Ablehnen</Button>
-                </ListItem>
-              ))}
+              {pendingRequests.map(req => {
+                const partner = getChatPartnerObj(req);
+                return (
+                  <ListItem key={req.id}>
+                    <Avatar src={partner.avatar_url} sx={{ width: 32, height: 32, mr: 1 }} />
+                    <ListItemText primary={`Von: ${partner.username}`} />
+                    <Button color="primary" onClick={() => handleRequestAction(req.id, 'accept')}>Annehmen</Button>
+                    <Button color="secondary" onClick={() => handleRequestAction(req.id, 'declined')}>Ablehnen</Button>
+                  </ListItem>
+                );
+              })}
             </List>
           </Box>
         )}
@@ -415,9 +461,14 @@ export default function ChatTab({ user }) {
           {chats.filter(c => c.status === 'accepted').map(chat => {
             const partner = getChatPartnerObj(chat);
             return (
-              <ListItem button key={chat.id} selected={selectedChat?.id === chat.id} onClick={() => setSelectedChat(chat)}>
-                <ListItemText primary={`Chat mit ${partner.username}`} />
-              </ListItem>
+              <Card key={chat.id} sx={{ mb: 2, boxShadow: 2, borderRadius: 2, bgcolor: selectedChat?.id === chat.id ? '#ffe4f3' : '#fff' }}>
+                <CardActionArea onClick={() => setSelectedChat(chat)}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', p: 1 }}>
+                    <Avatar src={partner.avatar_url} sx={{ width: 36, height: 36, mr: 2 }} />
+                    <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>{partner.username}</Typography>
+                  </Box>
+                </CardActionArea>
+              </Card>
             );
           })}
         </List>
@@ -451,7 +502,7 @@ export default function ChatTab({ user }) {
                       <Paper sx={{ p: 1.5, bgcolor: msg.sender_id === user.id ? '#ff4081' : '#eee', color: msg.sender_id === user.id ? 'white' : 'black', borderRadius: 2, maxWidth: '70%' }}>
                         {msg.image_url && <img src={msg.image_url} alt="Bild" style={chatImageStyle} />}
                         {msg.content && <Typography variant="body2">{msg.content}</Typography>}
-                        <Typography variant="caption" sx={{ opacity: 0.7 }}>{msg.sender_id === user.id ? 'Du' : userMap[msg.sender_id] || `User #${msg.sender_id}`}</Typography>
+                        <Typography variant="caption" sx={{ opacity: 0.7 }}>{msg.sender_id === user.id ? 'Du' : userMap[msg.sender_id]?.username || `User #${msg.sender_id}`}</Typography>
                       </Paper>
                     </ListItem>
                   ))}
