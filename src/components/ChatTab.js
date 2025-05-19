@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../supabaseClient';
-import { Box, Typography, TextField, Button, List, ListItem, ListItemText, Alert, Divider, Paper, IconButton, useMediaQuery } from '@mui/material';
+import { Box, Typography, TextField, Button, List, ListItem, ListItemText, Alert, Divider, Paper, IconButton, useMediaQuery, CircularProgress } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ImageIcon from '@mui/icons-material/Image';
+
+const PAGE_SIZE = 20;
 
 export default function ChatTab({ user }) {
   const [chats, setChats] = useState([]);
@@ -15,9 +17,14 @@ export default function ChatTab({ user }) {
   const [success, setSuccess] = useState('');
   const [pendingRequests, setPendingRequests] = useState([]);
   const [userMap, setUserMap] = useState({});
-  const messagesEndRef = useRef(null);
-  const isMobile = useMediaQuery('(max-width:600px)');
   const [imageToSend, setImageToSend] = useState(null);
+  const [loadingMessages, setLoadingMessages] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const messagesEndRef = useRef(null);
+  const messagesListRef = useRef(null);
+  const isMobile = useMediaQuery('(max-width:600px)');
+  const [oldestMessageId, setOldestMessageId] = useState(null);
 
   // Lade alle Usernamen für Mapping
   useEffect(() => {
@@ -60,19 +67,55 @@ export default function ChatTab({ user }) {
     fetchRequests();
   }, [user]);
 
-  // Lade Nachrichten für ausgewählten Chat
+  // Nachrichten laden (nur die letzten PAGE_SIZE)
   useEffect(() => {
     if (!selectedChat) return;
+    setLoadingMessages(true);
+    setHasMore(true);
     const fetchMessages = async () => {
       const { data } = await supabase
         .from('messages')
         .select('*')
         .eq('chat_id', selectedChat.id)
-        .order('created_at', { ascending: true });
-      setMessages(data || []);
+        .order('created_at', { ascending: false })
+        .limit(PAGE_SIZE);
+      if (data) {
+        setMessages(data.reverse());
+        setOldestMessageId(data.length > 0 ? data[data.length - 1].id : null);
+        setHasMore(data.length === PAGE_SIZE);
+      }
+      setLoadingMessages(false);
     };
     fetchMessages();
   }, [selectedChat]);
+
+  // Infinite Scroll: Ältere Nachrichten laden
+  const loadMoreMessages = async () => {
+    if (!selectedChat || !hasMore || loadingMore || !oldestMessageId) return;
+    setLoadingMore(true);
+    const { data } = await supabase
+      .from('messages')
+      .select('*')
+      .eq('chat_id', selectedChat.id)
+      .lt('id', oldestMessageId)
+      .order('created_at', { ascending: false })
+      .limit(PAGE_SIZE);
+    if (data && data.length > 0) {
+      setMessages(prev => [...data.reverse(), ...prev]);
+      setOldestMessageId(data[data.length - 1].id);
+      setHasMore(data.length === PAGE_SIZE);
+    } else {
+      setHasMore(false);
+    }
+    setLoadingMore(false);
+  };
+
+  // Scroll-Handler für Infinite Scroll
+  const handleScroll = (e) => {
+    if (e.target.scrollTop < 50 && hasMore && !loadingMore) {
+      loadMoreMessages();
+    }
+  };
 
   // Realtime-Subscription für neue Nachrichten
   useEffect(() => {
@@ -94,7 +137,7 @@ export default function ChatTab({ user }) {
     };
   }, [selectedChat]);
 
-  // Auto-Scroll zu neuen Nachrichten
+  // Auto-Scroll zu neuen Nachrichten (nur wenn neue unten angehängt werden)
   useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
