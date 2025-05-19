@@ -14,7 +14,8 @@ import {
   TextField,
   Chip,
   Checkbox,
-  IconButton
+  IconButton,
+  Switch
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import SettingsIcon from '@mui/icons-material/Settings';
@@ -32,6 +33,9 @@ export default function SharedListsTab({ user }) {
   const [inviteUsername, setInviteUsername] = useState('');
   const [inviteError, setInviteError] = useState('');
   const [inviteSuccess, setInviteSuccess] = useState('');
+  const [memberSettingsOpen, setMemberSettingsOpen] = useState(false);
+  const [selectedMember, setSelectedMember] = useState(null);
+  const [memberInviteAllowed, setMemberInviteAllowed] = useState(false);
 
   // Lade Listen, an denen der User beteiligt ist
   useEffect(() => {
@@ -182,6 +186,35 @@ export default function SharedListsTab({ user }) {
     await fetchMembers();
   };
 
+  // Öffne Member-Settings-Dialog
+  const handleOpenMemberSettings = (member) => {
+    setSelectedMember(member);
+    setMemberInviteAllowed(!!member.can_invite);
+    setMemberSettingsOpen(true);
+  };
+
+  // Speichere Member-Settings
+  const handleSaveMemberSettings = async () => {
+    if (!selectedMember) return;
+    await supabase
+      .from('shared_list_members')
+      .update({ can_invite: memberInviteAllowed })
+      .eq('id', selectedMember.id);
+    setMemberSettingsOpen(false);
+    await fetchMembers();
+  };
+
+  // Entferne Mitglied
+  const handleRemoveMember = async () => {
+    if (!selectedMember) return;
+    await supabase
+      .from('shared_list_members')
+      .delete()
+      .eq('id', selectedMember.id);
+    setMemberSettingsOpen(false);
+    await fetchMembers();
+  };
+
   return (
     <Box>
       <Typography variant="h5" gutterBottom>Gemeinsame Listen</Typography>
@@ -326,25 +359,31 @@ export default function SharedListsTab({ user }) {
             {members.map(m => (
               <ListItem key={m.id}
                 secondaryAction={
-                  selectedList?.creator_id === user.id && m.user_id !== user.id ? (
-                    <Button
-                      color="error"
-                      size="small"
-                      onClick={async () => {
-                        await supabase
-                          .from('shared_list_members')
-                          .delete()
-                          .eq('id', m.id);
-                        await fetchMembers();
-                      }}
-                    >
-                      Entfernen
-                    </Button>
+                  selectedList?.creator_id === user.id ? (
+                    <IconButton onClick={() => handleOpenMemberSettings(m)}>
+                      <SettingsIcon fontSize="small" />
+                    </IconButton>
                   ) : null
                 }
               >
-                <ListItemText primary={m.users?.username || m.user_id} />
-                <Chip label={m.status === 'accepted' ? 'Mitglied' : m.status} color={m.status === 'accepted' ? 'success' : 'warning'} size="small" />
+                <ListItemText
+                  primary={m.users?.username || m.user_id}
+                  secondary={
+                    m.user_id === selectedList?.creator_id
+                      ? 'Ersteller'
+                      : m.status === 'accepted' ? (m.can_invite ? 'Mitglied (darf einladen)' : 'Mitglied') : m.status
+                  }
+                />
+                <Chip
+                  label={
+                    m.user_id === selectedList?.creator_id
+                      ? 'Ersteller'
+                      : m.status === 'accepted' ? 'Mitglied' : m.status
+                  }
+                  color={m.user_id === selectedList?.creator_id ? 'info' : m.status === 'accepted' ? 'success' : 'warning'}
+                  size="small"
+                  sx={{ ml: 1 }}
+                />
               </ListItem>
             ))}
           </List>
@@ -384,6 +423,43 @@ export default function SharedListsTab({ user }) {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setSettingsOpen(false)}>Schließen</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Member-Settings-Dialog */}
+      <Dialog open={memberSettingsOpen} onClose={() => setMemberSettingsOpen(false)} maxWidth="xs">
+        <DialogTitle>Mitglied verwalten</DialogTitle>
+        <DialogContent>
+          <Typography variant="subtitle1" sx={{ mb: 2 }}>{selectedMember?.users?.username || selectedMember?.user_id}</Typography>
+          {selectedMember && selectedMember.user_id !== selectedList?.creator_id && (
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+              <Switch
+                checked={memberInviteAllowed}
+                onChange={e => setMemberInviteAllowed(e.target.checked)}
+                color="primary"
+              />
+              <Typography sx={{ ml: 1 }}>Darf Mitglieder einladen</Typography>
+            </Box>
+          )}
+          {selectedMember && selectedMember.user_id !== selectedList?.creator_id && (
+            <Button
+              color="error"
+              variant="outlined"
+              onClick={handleRemoveMember}
+              sx={{ mt: 2 }}
+            >
+              Mitglied entfernen
+            </Button>
+          )}
+          {selectedMember && selectedMember.user_id === selectedList?.creator_id && (
+            <Typography color="info.main" sx={{ mt: 2 }}>Das ist der Ersteller der Liste.</Typography>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setMemberSettingsOpen(false)}>Abbrechen</Button>
+          {selectedMember && selectedMember.user_id !== selectedList?.creator_id && (
+            <Button onClick={handleSaveMemberSettings} variant="contained">Speichern</Button>
+          )}
         </DialogActions>
       </Dialog>
     </Box>
