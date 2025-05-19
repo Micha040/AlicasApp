@@ -814,7 +814,8 @@ function App() {
         <Tabs
           value={tabValue}
           onChange={handleTabChange}
-          centered
+          variant="scrollable"
+          scrollButtons="auto"
           sx={{ borderBottom: 1, borderColor: 'divider', minHeight: 48 }}
           TabIndicatorProps={{ style: { height: 3, background: '#ff4081' } }}
         >
