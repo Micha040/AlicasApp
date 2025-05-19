@@ -8,7 +8,6 @@ import EmailIcon from '@mui/icons-material/Email';
 import PersonIcon from '@mui/icons-material/Person';
 import LockIcon from '@mui/icons-material/Lock';
 import { v4 as uuidv4 } from 'uuid';
-import { Resend } from 'resend';
 
 export default function Register({ onRegister }) {
   const [email, setEmail] = useState('');
@@ -44,14 +43,12 @@ export default function Register({ onRegister }) {
     if (dbError) {
       setError('Fehler: ' + dbError.message);
     } else {
-      // Bestätigungs-E-Mail senden
+      // Bestätigungs-E-Mail senden über eigene API-Route
       try {
-        const resend = new Resend(process.env.REACT_APP_RESEND_API_KEY);
-        await resend.emails.send({
-          from: 'Alicas-App <noreply@alicas-app.de>',
-          to: email,
-          subject: 'Bitte bestätige deine E-Mail',
-          html: `<a href="https://alicas-app.vercel.app/api/verify?token=${token}">Klicke hier, um deine E-Mail zu bestätigen</a>`
+        await fetch('/api/sendVerificationEmail', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, token })
         });
         setSuccess('Registrierung erfolgreich! Bitte bestätige deine E-Mail.');
         setEmail('');
