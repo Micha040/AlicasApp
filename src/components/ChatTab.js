@@ -330,17 +330,17 @@ export default function ChatTab({ user }) {
                 {pendingRequests.map(req => {
                   const partner = getChatPartnerObj(req);
                   return (
-                    <ListItem key={req.id} sx={{ alignItems: 'center', display: 'flex' }}>
-                      <Avatar src={partner.avatar_url} sx={{ width: 32, height: 32, mr: 1 }} />
+                    <ListItem key={req.id} sx={{ alignItems: 'flex-start', display: 'flex' }}>
+                      <Avatar src={partner.avatar_url} sx={{ width: 32, height: 32, mr: 1, mt: 0.5 }} />
                       <Box sx={{ flex: 1, minWidth: 0 }}>
-                        <Typography noWrap>
+                        <Typography>
                           Von: <b>{partner.username}</b>
                         </Typography>
+                        <ButtonGroup variant="outlined" sx={{ mt: 0.5 }}>
+                          <Button color="primary" size="small" onClick={() => handleRequestAction(req.id, 'accept')}>Annehmen</Button>
+                          <Button color="secondary" size="small" onClick={() => handleRequestAction(req.id, 'declined')}>Ablehnen</Button>
+                        </ButtonGroup>
                       </Box>
-                      <ButtonGroup variant="outlined" sx={{ ml: 1 }}>
-                        <Button color="primary" size="small" onClick={() => handleRequestAction(req.id, 'accept')}>Annehmen</Button>
-                        <Button color="secondary" size="small" onClick={() => handleRequestAction(req.id, 'declined')}>Ablehnen</Button>
-                      </ButtonGroup>
                     </ListItem>
                   );
                 })}
@@ -470,17 +470,17 @@ export default function ChatTab({ user }) {
               {pendingRequests.map(req => {
                 const partner = getChatPartnerObj(req);
                 return (
-                  <ListItem key={req.id} sx={{ alignItems: 'center', display: 'flex' }}>
-                    <Avatar src={partner.avatar_url} sx={{ width: 32, height: 32, mr: 1 }} />
+                  <ListItem key={req.id} sx={{ alignItems: 'flex-start', display: 'flex' }}>
+                    <Avatar src={partner.avatar_url} sx={{ width: 32, height: 32, mr: 1, mt: 0.5 }} />
                     <Box sx={{ flex: 1, minWidth: 0 }}>
-                      <Typography noWrap>
+                      <Typography>
                         Von: <b>{partner.username}</b>
                       </Typography>
+                      <ButtonGroup variant="outlined" sx={{ mt: 0.5 }}>
+                        <Button color="primary" size="small" onClick={() => handleRequestAction(req.id, 'accept')}>Annehmen</Button>
+                        <Button color="secondary" size="small" onClick={() => handleRequestAction(req.id, 'declined')}>Ablehnen</Button>
+                      </ButtonGroup>
                     </Box>
-                    <ButtonGroup variant="outlined" sx={{ ml: 1 }}>
-                      <Button color="primary" size="small" onClick={() => handleRequestAction(req.id, 'accept')}>Annehmen</Button>
-                      <Button color="secondary" size="small" onClick={() => handleRequestAction(req.id, 'declined')}>Ablehnen</Button>
-                    </ButtonGroup>
                   </ListItem>
                 );
               })}

@@ -60,16 +60,37 @@ function ProfileDialog({ open, onClose, user, onLogout, onProfileUpdate }) {
 
   const handleUsernameUpdate = async () => {
     try {
-      const { error } = await supabase
+      // Prüfen, ob Username schon existiert (außer beim eigenen User)
+      const { data: existingUser } = await supabase
+        .from('users')
+        .select('id')
+        .eq('username', username)
+        .neq('id', user.id)
+        .maybeSingle();
+      const { data: existingProfile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('username', username)
+        .neq('id', user.id)
+        .maybeSingle();
+      if (existingUser || existingProfile) {
+        alert('Der Benutzername ist bereits vergeben!');
+        return;
+      }
+      // Username in beiden Tabellen aktualisieren
+      const { error: userError } = await supabase
+        .from('users')
+        .update({ username })
+        .eq('id', user.id);
+      if (userError) throw userError;
+      const { error: profileError } = await supabase
         .from('profiles')
         .upsert({
           id: user.id,
           username: username,
           updated_at: new Date().toISOString()
         });
-
-      if (error) throw error;
-
+      if (profileError) throw profileError;
       onProfileUpdate({ ...user, username: username });
     } catch (error) {
       console.error('Fehler beim Aktualisieren des Benutzernamens:', error);

@@ -15,7 +15,9 @@ import {
   Chip,
   Checkbox,
   IconButton,
-  Switch
+  Switch,
+  Card,
+  CardActionArea
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import SettingsIcon from '@mui/icons-material/Settings';
@@ -368,11 +370,19 @@ export default function SharedListsTab({ user }) {
 
       {/* Listenübersicht */}
       <Typography variant="h6">Deine Listen</Typography>
-      <List>
+      <List sx={{ p: 0 }}>
         {lists.map(list => (
-          <ListItem key={list.id} button onClick={() => openListDetail(list)}>
-            <ListItemText primary={list.name} />
-          </ListItem>
+          <Card key={list.id} sx={{ mb: 2, boxShadow: 2, borderRadius: 2 }}>
+            <CardActionArea onClick={() => openListDetail(list)}>
+              <Box sx={{ display: 'flex', alignItems: 'center', p: 1 }}>
+                {/* Optional: Icon oder Initialen als Avatar */}
+                <Box sx={{ width: 36, height: 36, bgcolor: '#e0e0e0', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', mr: 2, fontWeight: 600, fontSize: 18 }}>
+                  {list.name?.[0]?.toUpperCase() || '?'}
+                </Box>
+                <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>{list.name}</Typography>
+              </Box>
+            </CardActionArea>
+          </Card>
         ))}
       </List>
 
