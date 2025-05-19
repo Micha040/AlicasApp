@@ -61,6 +61,71 @@ export default function SharedListsTab({ user }) {
     fetchInvites();
   }, [user]);
 
+  // Realtime für Listeneinträge
+  useEffect(() => {
+    if (!selectedList) return;
+    const channel = supabase.channel('shared-list-items-' + selectedList.id)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'shared_list_items',
+        filter: `list_id=eq.${selectedList.id}`
+      }, payload => {
+        // Neu laden, wenn sich etwas ändert
+        supabase
+          .from('shared_list_items')
+          .select('*')
+          .eq('list_id', selectedList.id)
+          .order('created_at', { ascending: true })
+          .then(({ data }) => setListItems(data || []));
+      })
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [selectedList]);
+
+  // Realtime für Mitglieder
+  useEffect(() => {
+    if (!selectedList) return;
+    const channel = supabase.channel('shared-list-members-' + selectedList.id)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'shared_list_members',
+        filter: `list_id=eq.${selectedList.id}`
+      }, payload => {
+        fetchMembers();
+      })
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [selectedList]);
+
+  // Realtime für Einladungen (nur für den aktuellen User)
+  useEffect(() => {
+    if (!user) return;
+    const channel = supabase.channel('shared-list-invites-' + user.id)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'shared_list_members',
+        filter: `user_id=eq.${user.id}`
+      }, payload => {
+        supabase
+          .from('shared_list_members')
+          .select('*, shared_lists(name)')
+          .eq('user_id', user.id)
+          .eq('status', 'pending')
+          .then(({ data }) => setInvitations(data || []));
+      })
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
+
   // Neue Liste erstellen
   const handleCreateList = async () => {
     if (!newListName.trim()) return;
@@ -175,11 +240,12 @@ export default function SharedListsTab({ user }) {
       setInviteError('User ist bereits eingeladen oder Mitglied!');
       return;
     }
-    // Einladung speichern
+    // Einladung speichern, can_invite immer false
     await supabase.from('shared_list_members').insert({
       list_id: selectedList.id,
       user_id: userToInvite.id,
-      status: 'pending'
+      status: 'pending',
+      can_invite: false
     });
     setInviteSuccess('Einladung verschickt!');
     setInviteUsername('');
@@ -214,6 +280,11 @@ export default function SharedListsTab({ user }) {
     setMemberSettingsOpen(false);
     await fetchMembers();
   };
+
+  // Ermittle, ob der aktuelle User einladen darf
+  const isErsteller = selectedList?.creator_id === user.id;
+  const myMembership = members.find(m => m.user_id === user.id);
+  const canInvite = isErsteller || (myMembership && myMembership.can_invite);
 
   return (
     <Box>
@@ -387,19 +458,22 @@ export default function SharedListsTab({ user }) {
               </ListItem>
             ))}
           </List>
-          <Box sx={{ mt: 2 }}>
-            <Typography variant="subtitle2">Neues Mitglied einladen</Typography>
-            <TextField
-              label="Username"
-              value={inviteUsername}
-              onChange={e => setInviteUsername(e.target.value)}
-              fullWidth
-              sx={{ mt: 1, mb: 1 }}
-            />
-            <Button onClick={handleInvite} variant="contained">Einladen</Button>
-            {inviteError && <Typography color="error" sx={{ mt: 1 }}>{inviteError}</Typography>}
-            {inviteSuccess && <Typography color="success.main" sx={{ mt: 1 }}>{inviteSuccess}</Typography>}
-          </Box>
+          {/* Nur anzeigen, wenn canInvite true ist */}
+          {canInvite && (
+            <Box sx={{ mt: 2 }}>
+              <Typography variant="subtitle2">Neues Mitglied einladen</Typography>
+              <TextField
+                label="Username"
+                value={inviteUsername}
+                onChange={e => setInviteUsername(e.target.value)}
+                fullWidth
+                sx={{ mt: 1, mb: 1 }}
+              />
+              <Button onClick={handleInvite} variant="contained">Einladen</Button>
+              {inviteError && <Typography color="error" sx={{ mt: 1 }}>{inviteError}</Typography>}
+              {inviteSuccess && <Typography color="success.main" sx={{ mt: 1 }}>{inviteSuccess}</Typography>}
+            </Box>
+          )}
           {/* Liste löschen nur für Ersteller */}
           {selectedList?.creator_id === user.id && (
             <Box sx={{ mt: 3, textAlign: 'center' }}>
