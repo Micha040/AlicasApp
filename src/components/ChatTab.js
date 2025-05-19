@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../supabaseClient';
-import { Box, Typography, TextField, Button, List, ListItem, ListItemText, Alert, Divider, Paper, IconButton, useMediaQuery, CircularProgress, Avatar, Card, CardActionArea } from '@mui/material';
+import { Box, Typography, TextField, Button, List, ListItem, ListItemText, Alert, Divider, Paper, IconButton, useMediaQuery, CircularProgress, Avatar, Card, CardActionArea, ButtonGroup } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ImageIcon from '@mui/icons-material/Image';
 
@@ -68,6 +68,22 @@ export default function ChatTab({ user }) {
     };
   }, [user]);
 
+  // Realtime für offene Anfragen (pendingRequests)
+  useEffect(() => {
+    if (!user) return;
+    const channel = supabase.channel('chats-requests-realtime')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'chats',
+        filter: `user2_id=eq.${user.id}`
+      }, () => fetchRequests())
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
+
   // Lade alle Chats des Users
   const fetchChats = async () => {
     const { data } = await supabase
@@ -83,16 +99,16 @@ export default function ChatTab({ user }) {
   }, [user]);
 
   // Lade offene Anfragen
+  const fetchRequests = async () => {
+    const { data } = await supabase
+      .from('chats')
+      .select('*')
+      .eq('user2_id', user.id)
+      .eq('status', 'pending');
+    setPendingRequests(data || []);
+  };
   useEffect(() => {
     if (!user) return;
-    const fetchRequests = async () => {
-      const { data } = await supabase
-        .from('chats')
-        .select('*')
-        .eq('user2_id', user.id)
-        .eq('status', 'pending');
-      setPendingRequests(data || []);
-    };
     fetchRequests();
   }, [user]);
 
@@ -223,6 +239,9 @@ export default function ChatTab({ user }) {
   const handleRequestAction = async (chatId, action) => {
     const status = action === 'accept' ? 'accepted' : 'declined';
     await supabase.from('chats').update({ status }).eq('id', chatId);
+    // Nach Annahme/Ablehnung sofort neu laden
+    fetchRequests();
+    fetchChats();
   };
 
   // Nachricht senden (Text oder Bild)
@@ -311,11 +330,13 @@ export default function ChatTab({ user }) {
                 {pendingRequests.map(req => {
                   const partner = getChatPartnerObj(req);
                   return (
-                    <ListItem key={req.id}>
+                    <ListItem key={req.id} sx={{ alignItems: 'center' }}>
                       <Avatar src={partner.avatar_url} sx={{ width: 32, height: 32, mr: 1 }} />
                       <ListItemText primary={`Von: ${partner.username}`} />
-                      <Button color="primary" onClick={() => handleRequestAction(req.id, 'accept')}>Annehmen</Button>
-                      <Button color="secondary" onClick={() => handleRequestAction(req.id, 'declined')}>Ablehnen</Button>
+                      <ButtonGroup variant="outlined" sx={{ ml: 1 }}>
+                        <Button color="primary" onClick={() => handleRequestAction(req.id, 'accept')}>Annehmen</Button>
+                        <Button color="secondary" onClick={() => handleRequestAction(req.id, 'declined')}>Ablehnen</Button>
+                      </ButtonGroup>
                     </ListItem>
                   );
                 })}
@@ -445,11 +466,13 @@ export default function ChatTab({ user }) {
               {pendingRequests.map(req => {
                 const partner = getChatPartnerObj(req);
                 return (
-                  <ListItem key={req.id}>
+                  <ListItem key={req.id} sx={{ alignItems: 'center' }}>
                     <Avatar src={partner.avatar_url} sx={{ width: 32, height: 32, mr: 1 }} />
                     <ListItemText primary={`Von: ${partner.username}`} />
-                    <Button color="primary" onClick={() => handleRequestAction(req.id, 'accept')}>Annehmen</Button>
-                    <Button color="secondary" onClick={() => handleRequestAction(req.id, 'declined')}>Ablehnen</Button>
+                    <ButtonGroup variant="outlined" sx={{ ml: 1 }}>
+                      <Button color="primary" onClick={() => handleRequestAction(req.id, 'accept')}>Annehmen</Button>
+                      <Button color="secondary" onClick={() => handleRequestAction(req.id, 'declined')}>Ablehnen</Button>
+                    </ButtonGroup>
                   </ListItem>
                 );
               })}
