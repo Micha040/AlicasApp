@@ -556,11 +556,32 @@ function Wordle({ wordleWords }) {
         </Button>
       </Box>
 
+      {/* Verstecktes Input-Feld für mobile Tastatur */}
+      <input
+        type="text"
+        autoComplete="off"
+        autoCorrect="off"
+        autoCapitalize="off"
+        spellCheck="false"
+        style={{
+          position: 'absolute',
+          opacity: 0,
+          pointerEvents: 'none'
+        }}
+        value={currentGuess}
+        onChange={(e) => {
+          const value = e.target.value.toUpperCase();
+          if (value.length <= targetWord.length && /^[A-Z]*$/.test(value)) {
+            setCurrentGuess(value);
+          }
+        }}
+        onKeyDown={handleKeyPress}
+      />
+
       <Box sx={{ mb: 2 }}>
         {[...Array(6)].map((_, rowIndex) => {
           const isCurrentRow = rowIndex === guesses.length;
           const rowWord = isCurrentRow ? currentGuess : guesses[rowIndex] || '';
-          // Status-Array für diese Zeile berechnen
           const statuses = guesses[rowIndex] ? getGuessStatuses(guesses[rowIndex], targetWord) : [];
           return (
             <Box
@@ -570,6 +591,12 @@ function Wordle({ wordleWords }) {
                 gap: 1,
                 mb: 1,
                 justifyContent: 'center'
+              }}
+              onClick={() => {
+                if (isCurrentRow && !gameOver) {
+                  // Fokus auf das versteckte Input-Feld setzen
+                  document.querySelector('input[type="text"]').focus();
+                }
               }}
             >
               {[...Array(targetWord.length)].map((_, colIndex) => {
@@ -597,7 +624,8 @@ function Wordle({ wordleWords }) {
                       transition: 'all 0.3s ease',
                       '&:hover': {
                         borderColor: isCurrentRow ? '#ff4081' : '#ccc'
-                      }
+                      },
+                      cursor: isCurrentRow ? 'text' : 'default'
                     }}
                   >
                     {letter}
@@ -607,7 +635,6 @@ function Wordle({ wordleWords }) {
             </Box>
           );
         })}
-        {/* Überprüfen-Button */}
         <Button
           variant="contained"
           color="secondary"
