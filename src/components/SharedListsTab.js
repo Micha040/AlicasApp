@@ -324,7 +324,25 @@ export default function SharedListsTab({ user }) {
           <Typography variant="subtitle1" sx={{ mb: 1 }}>Mitglieder:</Typography>
           <List>
             {members.map(m => (
-              <ListItem key={m.id}>
+              <ListItem key={m.id}
+                secondaryAction={
+                  selectedList?.creator_id === user.id && m.user_id !== user.id ? (
+                    <Button
+                      color="error"
+                      size="small"
+                      onClick={async () => {
+                        await supabase
+                          .from('shared_list_members')
+                          .delete()
+                          .eq('id', m.id);
+                        await fetchMembers();
+                      }}
+                    >
+                      Entfernen
+                    </Button>
+                  ) : null
+                }
+              >
                 <ListItemText primary={m.users?.username || m.user_id} />
                 <Chip label={m.status === 'accepted' ? 'Mitglied' : m.status} color={m.status === 'accepted' ? 'success' : 'warning'} size="small" />
               </ListItem>
@@ -343,6 +361,26 @@ export default function SharedListsTab({ user }) {
             {inviteError && <Typography color="error" sx={{ mt: 1 }}>{inviteError}</Typography>}
             {inviteSuccess && <Typography color="success.main" sx={{ mt: 1 }}>{inviteSuccess}</Typography>}
           </Box>
+          {/* Liste löschen nur für Ersteller */}
+          {selectedList?.creator_id === user.id && (
+            <Box sx={{ mt: 3, textAlign: 'center' }}>
+              <Button
+                color="error"
+                variant="outlined"
+                onClick={async () => {
+                  // Liste löschen
+                  await supabase.from('shared_lists').delete().eq('id', selectedList.id);
+                  setSettingsOpen(false);
+                  setSelectedList(null);
+                  // Listen neu laden
+                  const { data: newLists } = await supabase.rpc('get_user_lists', { user_id: user.id });
+                  setLists(newLists || []);
+                }}
+              >
+                Liste löschen
+              </Button>
+            </Box>
+          )}
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setSettingsOpen(false)}>Schließen</Button>
