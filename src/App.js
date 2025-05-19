@@ -754,6 +754,24 @@ function App() {
     fetchWords();
   }, []);
 
+  // Profil nach Login oder App-Start laden
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if (!user || !user.id) return;
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('avatar_url, username')
+        .eq('id', user.id)
+        .single();
+      if (profile) {
+        setUser((prev) => ({ ...prev, ...profile }));
+        localStorage.setItem('user', JSON.stringify({ ...user, ...profile }));
+      }
+    };
+    fetchProfile();
+    // eslint-disable-next-line
+  }, [user && user.id]);
+
   const handleTabChange = (event, newValue) => {
     setTabValue(newValue);
   };
@@ -799,9 +817,16 @@ function App() {
   };
 
   // User-Session auch in localStorage speichern
-  const handleLogin = (userData) => {
-    setUser(userData);
-    localStorage.setItem('user', JSON.stringify(userData));
+  const handleLogin = async (userData) => {
+    // Nach Login Profil laden
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('avatar_url, username')
+      .eq('id', userData.id)
+      .single();
+    const mergedUser = profile ? { ...userData, ...profile } : userData;
+    setUser(mergedUser);
+    localStorage.setItem('user', JSON.stringify(mergedUser));
   };
 
   const handleLogout = () => {
