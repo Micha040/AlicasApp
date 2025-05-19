@@ -35,6 +35,12 @@ export default function Login({ onLogin }) {
       return;
     }
 
+    // Überprüfen, ob E-Mail bestätigt wurde
+    if (!data.is_verified) {
+      setError('Bitte bestätige zuerst deine E-Mail-Adresse!');
+      return;
+    }
+
     // Login erfolgreich
     if (onLogin) onLogin(data);
   };

@@ -7,6 +7,8 @@ import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import EmailIcon from '@mui/icons-material/Email';
 import PersonIcon from '@mui/icons-material/Person';
 import LockIcon from '@mui/icons-material/Lock';
+import crypto from 'crypto';
+import { Resend } from 'resend';
 
 export default function Register({ onRegister }) {
   const [email, setEmail] = useState('');
@@ -28,22 +30,37 @@ export default function Register({ onRegister }) {
     // Passwort hashen
     const hashedPassword = await bcrypt.hash(password, 10);
 
+    // Token generieren
+    const token = crypto.randomUUID();
+
     // In Supabase speichern
     const { data, error: dbError } = await supabase
       .from('users')
       .insert([
-        { email, username, password: hashedPassword }
+        { email, username, password: hashedPassword, is_verified: false, verification_token: token }
       ])
       .select();
 
     if (dbError) {
       setError('Fehler: ' + dbError.message);
     } else {
-      setSuccess('Registrierung erfolgreich! Du kannst dich jetzt anmelden.');
-      setEmail('');
-      setUsername('');
-      setPassword('');
-      if (onRegister) onRegister();
+      // Bestätigungs-E-Mail senden
+      try {
+        const resend = new Resend(process.env.REACT_APP_RESEND_API_KEY);
+        await resend.emails.send({
+          from: 'Alicas-App <noreply@alicas-app.de>',
+          to: email,
+          subject: 'Bitte bestätige deine E-Mail',
+          html: `<a href="https://alicas-app.vercel.app/api/verify?token=${token}">Klicke hier, um deine E-Mail zu bestätigen</a>`
+        });
+        setSuccess('Registrierung erfolgreich! Bitte bestätige deine E-Mail.');
+        setEmail('');
+        setUsername('');
+        setPassword('');
+        if (onRegister) onRegister();
+      } catch (mailErr) {
+        setError('Registrierung gespeichert, aber E-Mail konnte nicht gesendet werden. Kontaktiere den Support.');
+      }
     }
   };
 
