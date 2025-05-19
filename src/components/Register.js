@@ -7,7 +7,7 @@ import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import EmailIcon from '@mui/icons-material/Email';
 import PersonIcon from '@mui/icons-material/Person';
 import LockIcon from '@mui/icons-material/Lock';
-import crypto from 'crypto';
+import { v4 as uuidv4 } from 'uuid';
 import { Resend } from 'resend';
 
 export default function Register({ onRegister }) {
@@ -31,7 +31,7 @@ export default function Register({ onRegister }) {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // Token generieren
-    const token = crypto.randomUUID();
+    const token = uuidv4();
 
     // In Supabase speichern
     const { data, error: dbError } = await supabase
