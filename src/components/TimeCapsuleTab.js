@@ -22,7 +22,13 @@ import AddIcon from '@mui/icons-material/Add';
 import AddPhotoAlternateIcon from '@mui/icons-material/AddPhotoAlternate';
 import { supabase } from '../supabaseClient';
 
-export default function TimeCapsuleTab({ user }) {
+export default function TimeCapsuleTab() {
+  // User aus localStorage holen
+  const user = React.useMemo(() => {
+    const stored = localStorage.getItem('user');
+    return stored ? JSON.parse(stored) : null;
+  }, []);
+
   const [memories, setMemories] = useState([]);
   const [newMemory, setNewMemory] = useState({
     content: '',
