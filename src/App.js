@@ -64,6 +64,7 @@ import Impressum from './components/Impressum';
 import Datenschutz from './components/Datenschutz';
 import RecipesTab from './components/RecipesTab';
 import RecipeDetail from './components/RecipeDetail';
+import TimeCapsuleTab from './components/TimeCapsuleTab';
 
 function HideOnScroll(props) {
   const { children, setAppBarHidden } = props;
@@ -619,36 +620,12 @@ function App() {
     return stored ? JSON.parse(stored) : null;
   });
   const [tabValue, setTabValue] = useState(0);
-  const [memories, setMemories] = useState([]);
-  const [newMemory, setNewMemory] = useState({
-    type: 'message',
-    content: '',
-    date: new Date().toISOString().split('T')[0]
-  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [wordleWords, setWordleWords] = useState([]);
   const [showRegister, setShowRegister] = useState(false);
   const [appBarHidden, setAppBarHidden] = useState(false);
   const [profileDialogOpen, setProfileDialogOpen] = useState(false);
-
-  useEffect(() => {
-    // Erinnerungen aus Supabase laden
-    const fetchMemories = async () => {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('memories')
-        .select('*')
-        .order('created_at', { ascending: false });
-      if (error) {
-        setError('Fehler beim Laden der Erinnerungen: ' + error.message);
-      } else {
-        setMemories(data);
-      }
-      setLoading(false);
-    };
-    fetchMemories();
-  }, []);
 
   // Wordle-Wörter aus Supabase laden
   useEffect(() => {
@@ -683,46 +660,6 @@ function App() {
 
   const handleTabChange = (event, newValue) => {
     setTabValue(newValue);
-  };
-
-  const handleAddMemory = async () => {
-    if (newMemory.content.trim()) {
-      setLoading(true);
-      // In Supabase speichern
-      const { data, error } = await supabase
-        .from('memories')
-        .insert([
-          {
-            type: newMemory.type,
-            content: newMemory.content,
-            date: newMemory.date
-          }
-        ])
-        .select();
-      if (error) {
-        setError('Fehler beim Speichern: ' + error.message);
-        setLoading(false);
-        return;
-      }
-      setMemories([data[0], ...memories]);
-      setNewMemory({ type: 'message', content: '', date: new Date().toISOString().split('T')[0] });
-      setLoading(false);
-    }
-  };
-
-  const handleFileUpload = (event, type) => {
-    const file = event.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setNewMemory({
-          type,
-          content: reader.result,
-          date: new Date().toISOString().split('T')[0]
-        });
-      };
-      reader.readAsDataURL(file);
-    }
   };
 
   // User-Session auch in localStorage speichern
@@ -855,20 +792,7 @@ function App() {
               <Container maxWidth="md" sx={{ pt: 4 }}>
                 <Paper sx={{ width: '100%', mb: 4, boxShadow: 0, bgcolor: 'transparent' }}>
                   <TabPanel value={tabValue} index={0}>
-                    {loading ? (
-                      <Typography color="primary">Lade Daten...</Typography>
-                    ) : error ? (
-                      <Typography color="error">{error}</Typography>
-                    ) : (
-                      <TimeCapsule 
-                        memories={memories}
-                        setMemories={setMemories}
-                        newMemory={newMemory}
-                        setNewMemory={setNewMemory}
-                        handleAddMemory={handleAddMemory}
-                        handleFileUpload={handleFileUpload}
-                      />
-                    )}
+                    <TimeCapsuleTab />
                   </TabPanel>
                   <TabPanel value={tabValue} index={1}>
                     <GamesTab wordleWords={wordleWords} />
