@@ -54,6 +54,8 @@ import ChatTab from './components/ChatTab';
 import ProfileDialog from './components/ProfileDialog';
 import SharedListsTab from './components/SharedListsTab';
 import MinesweeperTab from './components/MinesweeperTab';
+import { Routes, Route } from 'react-router-dom';
+import ResetPassword from './components/ResetPassword';
 
 function HideOnScroll(props) {
   const { children, setAppBarHidden } = props;
@@ -740,35 +742,40 @@ function App() {
 
   if (!user) {
     return (
-      <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: '#f5f5f5' }}>
-        <Box sx={{ width: '100%', maxWidth: 400, p: 2 }}>
-          <Typography variant="h3" align="center" gutterBottom sx={{ fontWeight: 700, color: '#ff4081' }}>
-            Willkommen bei Alicas Zeitkapsel
-          </Typography>
-          <Typography variant="h6" align="center" gutterBottom>
-            Bitte logge dich ein oder registriere dich, um fortzufahren.
-          </Typography>
-          {!showRegister ? (
-            <>
-              <Login onLogin={handleLogin} />
-              <Box sx={{ textAlign: 'center', mt: 2 }}>
-                <Button variant="text" onClick={() => setShowRegister(true)}>
-                  Noch keinen Account? Jetzt registrieren
-                </Button>
-              </Box>
-            </>
-          ) : (
-            <>
-              <Register onRegister={() => setShowRegister(false)} />
-              <Box sx={{ textAlign: 'center', mt: 2 }}>
-                <Button variant="text" onClick={() => setShowRegister(false)}>
-                  Zurück zum Login
-                </Button>
-              </Box>
-            </>
-          )}
-        </Box>
-      </Box>
+      <Routes>
+        <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="*" element={
+          <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: '#f5f5f5' }}>
+            <Box sx={{ width: '100%', maxWidth: 400, p: 2 }}>
+              <Typography variant="h3" align="center" gutterBottom sx={{ fontWeight: 700, color: '#ff4081' }}>
+                Willkommen bei Alicas Zeitkapsel
+              </Typography>
+              <Typography variant="h6" align="center" gutterBottom>
+                Bitte logge dich ein oder registriere dich, um fortzufahren.
+              </Typography>
+              {!showRegister ? (
+                <>
+                  <Login onLogin={handleLogin} />
+                  <Box sx={{ textAlign: 'center', mt: 2 }}>
+                    <Button variant="text" onClick={() => setShowRegister(true)}>
+                      Noch keinen Account? Jetzt registrieren
+                    </Button>
+                  </Box>
+                </>
+              ) : (
+                <>
+                  <Register onRegister={() => setShowRegister(false)} />
+                  <Box sx={{ textAlign: 'center', mt: 2 }}>
+                    <Button variant="text" onClick={() => setShowRegister(false)}>
+                      Zurück zum Login
+                    </Button>
+                  </Box>
+                </>
+              )}
+            </Box>
+          </Box>
+        } />
+      </Routes>
     );
   }
 
