@@ -20,7 +20,8 @@ import {
   Chip,
   Fab,
   Snackbar,
-  Alert
+  Alert,
+  InputAdornment
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -30,7 +31,8 @@ import {
   Timer as TimerIcon,
   Restaurant as RestaurantIcon,
   Edit as EditIcon,
-  Delete as DeleteIcon
+  Delete as DeleteIcon,
+  Search as SearchIcon
 } from '@mui/icons-material';
 import { supabase } from '../supabaseClient';
 import { useNavigate } from 'react-router-dom';
@@ -38,6 +40,9 @@ import RecipeCommentsDialog from './RecipeCommentsDialog';
 
 export default function RecipesTab({ user }) {
   const [recipes, setRecipes] = useState([]);
+  const [filteredRecipes, setFilteredRecipes] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('');
   const [openDialog, setOpenDialog] = useState(false);
   const [selectedRecipe, setSelectedRecipe] = useState(null);
   const [newRecipe, setNewRecipe] = useState({
@@ -63,6 +68,33 @@ export default function RecipesTab({ user }) {
     fetchRecipes();
     fetchCategories();
   }, []);
+
+  useEffect(() => {
+    const filterRecipes = () => {
+      let filtered = [...recipes];
+      
+      // Textsuche
+      if (searchTerm) {
+        const searchLower = searchTerm.toLowerCase();
+        filtered = filtered.filter(recipe => 
+          recipe.title.toLowerCase().includes(searchLower) ||
+          recipe.description.toLowerCase().includes(searchLower) ||
+          recipe.ingredients.some(ing => ing.name.toLowerCase().includes(searchLower))
+        );
+      }
+
+      // Kategorie-Filter
+      if (selectedCategory) {
+        filtered = filtered.filter(recipe =>
+          recipe.recipe_categories?.some(rc => rc.categories?.id === selectedCategory)
+        );
+      }
+
+      setFilteredRecipes(filtered);
+    };
+
+    filterRecipes();
+  }, [recipes, searchTerm, selectedCategory]);
 
   const fetchRecipes = async () => {
     const { data, error } = await supabase
@@ -246,7 +278,7 @@ export default function RecipesTab({ user }) {
 
   return (
     <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h5" component="h2">
           Rezepte
         </Typography>
@@ -259,8 +291,39 @@ export default function RecipesTab({ user }) {
         </Fab>
       </Box>
 
+      <Box sx={{ mb: 3, display: 'flex', gap: 2 }}>
+        <TextField
+          fullWidth
+          placeholder="Rezepte durchsuchen..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon />
+              </InputAdornment>
+            ),
+          }}
+        />
+        <FormControl sx={{ minWidth: 200 }}>
+          <InputLabel>Kategorie</InputLabel>
+          <Select
+            value={selectedCategory}
+            onChange={(e) => setSelectedCategory(e.target.value)}
+            label="Kategorie"
+          >
+            <MenuItem value="">Alle</MenuItem>
+            {categories.map((category) => (
+              <MenuItem key={category.id} value={category.id}>
+                {category.name}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      </Box>
+
       <Grid container spacing={3}>
-        {recipes.map((recipe) => (
+        {(filteredRecipes.length > 0 ? filteredRecipes : recipes).map((recipe) => (
           <Grid item xs={12} sm={6} md={4} key={recipe.id}>
             <Card
               onClick={() => navigate(`/rezepte/${recipe.id}`)}
