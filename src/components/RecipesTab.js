@@ -49,7 +49,9 @@ export default function RecipesTab({ user }) {
     difficulty: 'Mittel',
     ingredients: [{ name: '', amount: '', unit: '' }],
     steps: [{ description: '', image_url: '' }],
-    categories: []
+    categories: [],
+    mainImageUrl: '',
+    mainImageFile: null
   });
   const [categories, setCategories] = useState([]);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
@@ -158,6 +160,20 @@ export default function RecipesTab({ user }) {
         if (categoriesError) throw categoriesError;
       }
 
+      // 5. Titelbild speichern
+      let mainImageUrl = newRecipe.mainImageUrl;
+      if (newRecipe.mainImageFile) {
+        // Bild als base64 speichern (alternativ: Upload zu Storage)
+        mainImageUrl = newRecipe.mainImageFile;
+      }
+      if (mainImageUrl) {
+        await supabase.from('recipe_images').insert({
+          recipe_id: recipe.id,
+          image_url: mainImageUrl,
+          is_main_image: true
+        });
+      }
+
       setSnackbar({
         open: true,
         message: 'Rezept erfolgreich erstellt!',
@@ -253,7 +269,7 @@ export default function RecipesTab({ user }) {
               <CardMedia
                 component="img"
                 height="200"
-                image={recipe.recipe_images?.[0]?.image_url || 'https://via.placeholder.com/300x200'}
+                image={recipe.recipe_images?.find(img => img.is_main_image)?.image_url || 'https://via.placeholder.com/300x200'}
                 alt={recipe.title}
               />
               <CardContent>
@@ -457,6 +473,42 @@ export default function RecipesTab({ user }) {
                 />
               ))}
             </Box>
+
+            <Typography variant="h6" sx={{ mt: 3, mb: 2 }}>Titelbild</Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+              <TextField
+                label="Bild-URL"
+                value={newRecipe.mainImageUrl}
+                onChange={e => setNewRecipe({ ...newRecipe, mainImageUrl: e.target.value })}
+                fullWidth
+              />
+              <input
+                accept="image/*"
+                style={{ display: 'none' }}
+                id="main-image-upload"
+                type="file"
+                onChange={e => {
+                  const file = e.target.files[0];
+                  if (file) {
+                    const reader = new FileReader();
+                    reader.onloadend = () => setNewRecipe(nr => ({ ...nr, mainImageFile: reader.result, mainImageUrl: '' }));
+                    reader.readAsDataURL(file);
+                  }
+                }}
+              />
+              <label htmlFor="main-image-upload">
+                <Button variant="outlined" component="span">Bild hochladen</Button>
+              </label>
+            </Box>
+            {(newRecipe.mainImageFile || newRecipe.mainImageUrl) && (
+              <Box sx={{ mb: 2 }}>
+                <img
+                  src={newRecipe.mainImageFile || newRecipe.mainImageUrl}
+                  alt="Titelbild Vorschau"
+                  style={{ maxWidth: 200, borderRadius: 8 }}
+                />
+              </Box>
+            )}
           </Box>
         </DialogContent>
         <DialogActions>
