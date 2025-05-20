@@ -1,6 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
-import { Box, Typography, TextField, Button, Card, CardContent, CardMedia, List, ListItem, ListItemText, ListItemAvatar, Avatar, Alert } from '@mui/material';
+import {
+  Box,
+  Typography,
+  Card,
+  CardContent,
+  CardMedia,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemAvatar,
+  Avatar,
+  Alert,
+  Fab,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  Button,
+  Snackbar
+} from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
 
 const SPOTIFY_CLIENT_ID = process.env.REACT_APP_SPOTIFY_CLIENT_ID;
 const SPOTIFY_CLIENT_SECRET = process.env.REACT_APP_SPOTIFY_CLIENT_SECRET;
@@ -37,13 +58,19 @@ async function searchSpotifyTrack(query, token) {
 }
 
 export default function MusicTab({ user }) {
-  const [query, setQuery] = useState('');
-  const [searchResult, setSearchResult] = useState(null);
   const [songs, setSongs] = useState([]);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(null);
+
+  // Dialog State
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const [searchResult, setSearchResult] = useState(null);
+  const [dialogError, setDialogError] = useState('');
+  const [dialogSuccess, setDialogSuccess] = useState('');
+  const [dialogLoading, setDialogLoading] = useState(false);
 
   useEffect(() => {
     // Lade alle geposteten Songs
@@ -58,139 +85,177 @@ export default function MusicTab({ user }) {
   }, []);
 
   const handleSearch = async () => {
-    setError('');
-    setSuccess('');
+    setDialogError('');
+    setDialogSuccess('');
     setSearchResult(null);
     if (!query) return;
-    setLoading(true);
+    setDialogLoading(true);
     try {
       const token = await getSpotifyToken();
       const result = await searchSpotifyTrack(query, token);
       if (!result) {
-        setError('Kein Song gefunden!');
+        setDialogError('Kein Song gefunden!');
       } else {
         setSearchResult(result);
       }
     } catch (e) {
-      setError('Fehler bei der Spotify-Suche.');
+      setDialogError('Fehler bei der Spotify-Suche.');
     }
-    setLoading(false);
+    setDialogLoading(false);
   };
 
   const handlePost = async () => {
     if (!searchResult) return;
-    setError('');
-    setSuccess('');
+    setDialogError('');
+    setDialogSuccess('');
     const { spotify_id, title, artist, cover_url, preview_url } = searchResult;
     const posted_by = user?.username || 'Unbekannt';
     const { error: dbError } = await supabase
       .from('favorite_songs')
       .insert([{ spotify_id, title, artist, cover_url, posted_by, preview_url }]);
     if (dbError) {
-      setError('Fehler beim Speichern!');
+      setDialogError('Fehler beim Speichern!');
     } else {
-      setSuccess('Song erfolgreich gepostet!');
+      setDialogSuccess('Song erfolgreich gepostet!');
       setSongs([{ spotify_id, title, artist, cover_url, posted_by, preview_url, created_at: new Date().toISOString() }, ...songs]);
       setSearchResult(null);
       setQuery('');
+      setDialogOpen(false);
+      setSuccess('Song erfolgreich gepostet!');
     }
   };
 
   return (
-    <Box sx={{ textAlign: 'center', mt: 4, mb: 4 }}>
+    <Box sx={{ textAlign: 'center', mt: 4, mb: 4, position: 'relative', minHeight: '100vh', pb: 8 }}>
       <Typography variant="h4" component="h1" sx={{ fontWeight: 'bold', mb: 3 }}>Musik</Typography>
-      <Box sx={{ maxWidth: 600, mx: 'auto', mt: 2 }}>
-        <Typography variant="h5" gutterBottom>Musik-Tab: Spotify-Songs vorschlagen</Typography>
-        <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
-          <TextField
-            label="Spotify-Link oder Songname"
-            value={query}
-            onChange={e => setQuery(e.target.value)}
-            fullWidth
-            disabled={loading}
-          />
-          <Button variant="contained" color="primary" onClick={handleSearch} disabled={loading}>
-            Suchen
-          </Button>
-        </Box>
-        {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-        {success && <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>}
-        {searchResult && (
-          <Card sx={{ mb: 2 }}>
-            <CardContent sx={{ display: 'flex', alignItems: 'center' }}>
-              <CardMedia
-                component="img"
-                image={searchResult.cover_url}
-                alt={searchResult.title}
-                sx={{ width: 80, height: 80, mr: 2 }}
+      <List>
+        {songs.map(song => (
+          <React.Fragment key={song.spotify_id + song.created_at}>
+            <ListItem alignItems="flex-start">
+              <ListItemAvatar>
+                <Avatar src={song.cover_url} alt={song.title} />
+              </ListItemAvatar>
+              <ListItemText
+                primary={song.title + ' – ' + song.artist}
+                secondary={
+                  <>
+                    {song.posted_by && <span>Vorgeschlagen von: {song.posted_by} · </span>}
+                    {song.created_at && new Date(song.created_at).toLocaleString()}
+                  </>
+                }
               />
-              <Box>
-                <Typography variant="h6">{searchResult.title}</Typography>
-                <Typography variant="subtitle1" color="text.secondary">{searchResult.artist}</Typography>
-                {searchResult.preview_url && (
-                  <audio controls src={searchResult.preview_url} style={{ marginTop: 8 }}>
-                    Dein Browser unterstützt kein Audio.
-                  </audio>
-                )}
-                <Button variant="contained" color="secondary" sx={{ mt: 1 }} onClick={handlePost}>
-                  Song posten
+              {song.preview_url && (
+                <Button
+                  variant="contained"
+                  color={previewOpen === song.spotify_id ? 'secondary' : 'primary'}
+                  size="small"
+                  sx={{ ml: 1 }}
+                  onClick={() => setPreviewOpen(previewOpen === song.spotify_id ? null : song.spotify_id)}
+                >
+                  {previewOpen === song.spotify_id ? 'Schließen' : 'Preview'}
                 </Button>
-              </Box>
-            </CardContent>
-          </Card>
-        )}
-        <Typography variant="h6" sx={{ mt: 4, mb: 2 }}>Alle geposteten Songs</Typography>
-        <List>
-          {songs.map(song => (
-            <React.Fragment key={song.spotify_id + song.created_at}>
-              <ListItem alignItems="flex-start">
-                <ListItemAvatar>
-                  <Avatar src={song.cover_url} alt={song.title} />
-                </ListItemAvatar>
-                <ListItemText
-                  primary={song.title + ' – ' + song.artist}
-                  secondary={
-                    <>
-                      {song.posted_by && <span>Vorgeschlagen von: {song.posted_by} · </span>}
-                      {song.created_at && new Date(song.created_at).toLocaleString()}
-                    </>
-                  }
-                />
-                {song.preview_url && (
-                  <Button
-                    variant="contained"
-                    color={previewOpen === song.spotify_id ? 'secondary' : 'primary'}
-                    size="small"
-                    sx={{ ml: 1 }}
-                    onClick={() => setPreviewOpen(previewOpen === song.spotify_id ? null : song.spotify_id)}
-                  >
-                    {previewOpen === song.spotify_id ? 'Schließen' : 'Preview'}
-                  </Button>
-                )}
-                {song.spotify_id && (
-                  <Button
-                    href={`https://open.spotify.com/track/${song.spotify_id}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    variant="outlined"
-                    size="small"
-                    sx={{ ml: 2 }}
-                  >
-                    Auf Spotify öffnen
-                  </Button>
-                )}
-              </ListItem>
-              {previewOpen === song.spotify_id && song.preview_url && (
-                <Box sx={{ pl: 10, pb: 2 }}>
-                  <audio controls autoPlay src={song.preview_url}>
-                    Dein Browser unterstützt kein Audio.
-                  </audio>
-                </Box>
               )}
-            </React.Fragment>
-          ))}
-        </List>
-      </Box>
+              {song.spotify_id && (
+                <Button
+                  href={`https://open.spotify.com/track/${song.spotify_id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  variant="outlined"
+                  size="small"
+                  sx={{ ml: 2 }}
+                >
+                  Auf Spotify öffnen
+                </Button>
+              )}
+            </ListItem>
+            {previewOpen === song.spotify_id && song.preview_url && (
+              <Box sx={{ pl: 10, pb: 2 }}>
+                <audio controls autoPlay src={song.preview_url}>
+                  Dein Browser unterstützt kein Audio.
+                </audio>
+              </Box>
+            )}
+          </React.Fragment>
+        ))}
+      </List>
+
+      <Fab
+        color="primary"
+        aria-label="add"
+        onClick={() => setDialogOpen(true)}
+        sx={{ position: 'fixed', bottom: 16, right: 16, zIndex: 1000 }}
+      >
+        <AddIcon />
+      </Fab>
+
+      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Neuen Song posten</DialogTitle>
+        <DialogContent>
+          <Box sx={{ mt: 2 }}>
+            <TextField
+              label="Spotify-Link oder Songname"
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              fullWidth
+              disabled={dialogLoading}
+              sx={{ mb: 2 }}
+            />
+            <Button variant="contained" color="primary" onClick={handleSearch} disabled={dialogLoading || !query} sx={{ mb: 2 }}>
+              Suchen
+            </Button>
+            {dialogError && <Alert severity="error" sx={{ mb: 2 }}>{dialogError}</Alert>}
+            {dialogSuccess && <Alert severity="success" sx={{ mb: 2 }}>{dialogSuccess}</Alert>}
+            {searchResult && (
+              <Card sx={{ mb: 2 }}>
+                <CardContent sx={{ display: 'flex', alignItems: 'center' }}>
+                  <CardMedia
+                    component="img"
+                    image={searchResult.cover_url}
+                    alt={searchResult.title}
+                    sx={{ width: 80, height: 80, mr: 2 }}
+                  />
+                  <Box>
+                    <Typography variant="h6">{searchResult.title}</Typography>
+                    <Typography variant="subtitle1" color="text.secondary">{searchResult.artist}</Typography>
+                    {searchResult.preview_url && (
+                      <audio controls src={searchResult.preview_url} style={{ marginTop: 8 }}>
+                        Dein Browser unterstützt kein Audio.
+                      </audio>
+                    )}
+                    <Button variant="contained" color="secondary" sx={{ mt: 1 }} onClick={handlePost}>
+                      Song posten
+                    </Button>
+                  </Box>
+                </CardContent>
+              </Card>
+            )}
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDialogOpen(false)}>Abbrechen</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Snackbar
+        open={!!success}
+        autoHideDuration={4000}
+        onClose={() => setSuccess('')}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert onClose={() => setSuccess('')} severity="success">
+          {success}
+        </Alert>
+      </Snackbar>
+      <Snackbar
+        open={!!error}
+        autoHideDuration={4000}
+        onClose={() => setError('')}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert onClose={() => setError('')} severity="error">
+          {error}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 } 

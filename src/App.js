@@ -321,7 +321,7 @@ function GameSelection({ onSelectGame }) {
 
   return (
     <Box sx={{ textAlign: 'center' }}>
-      <Typography variant="h5" gutterBottom>
+      <Typography variant="h4" component="h1" sx={{ fontWeight: 'bold', mb: 3, textAlign: 'center' }}>
         Wähle dein Spiel
       </Typography>
       <Grid container spacing={3} sx={{ mt: 2 }}>
