@@ -788,97 +788,105 @@ function App() {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-      <HideOnScroll setAppBarHidden={setAppBarHidden}>
-        <AppBar position="sticky" color="default" elevation={0} sx={{ borderBottom: 1, borderColor: 'divider', height: 56, justifyContent: 'center' }}>
-          <Toolbar sx={{ minHeight: 56, px: 2, display: 'flex', justifyContent: 'space-between' }}>
-            <IconButton 
-              size="large" 
-              edge="start" 
+      <Routes>
+        <Route path="/impressum" element={<Impressum />} />
+        <Route path="/datenschutz" element={<Datenschutz />} />
+        <Route path="*" element={
+          <>
+            <HideOnScroll setAppBarHidden={setAppBarHidden}>
+              <AppBar position="sticky" color="default" elevation={0} sx={{ borderBottom: 1, borderColor: 'divider', height: 56, justifyContent: 'center' }}>
+                <Toolbar sx={{ minHeight: 56, px: 2, display: 'flex', justifyContent: 'space-between' }}>
+                  <IconButton 
+                    size="large" 
+                    edge="start" 
+                    color="inherit"
+                    onClick={() => setProfileDialogOpen(true)}
+                  >
+                    <Avatar src={user?.avatar_url || "https://i.pravatar.cc/40?img=1"} />
+                  </IconButton>
+                  <Box sx={{ flex: 1 }} />
+                  <IconButton size="large" edge="end" color="inherit">
+                    <SettingsIcon />
+                  </IconButton>
+                </Toolbar>
+              </AppBar>
+            </HideOnScroll>
+
+            <ProfileDialog
+              open={profileDialogOpen}
+              onClose={() => setProfileDialogOpen(false)}
+              user={user}
+              onLogout={handleLogout}
+              onProfileUpdate={handleProfileUpdate}
+            />
+
+            <AppBar
+              position="sticky"
               color="inherit"
-              onClick={() => setProfileDialogOpen(true)}
+              elevation={1}
+              sx={{
+                top: appBarHidden ? 0 : 56,
+                zIndex: 1100,
+                transition: 'top 0.3s',
+              }}
             >
-              <Avatar src={user?.avatar_url || "https://i.pravatar.cc/40?img=1"} />
-            </IconButton>
-            <Box sx={{ flex: 1 }} />
-            <IconButton size="large" edge="end" color="inherit">
-              <SettingsIcon />
-            </IconButton>
-          </Toolbar>
-        </AppBar>
-      </HideOnScroll>
-
-      <ProfileDialog
-        open={profileDialogOpen}
-        onClose={() => setProfileDialogOpen(false)}
-        user={user}
-        onLogout={handleLogout}
-        onProfileUpdate={handleProfileUpdate}
-      />
-
-      <AppBar
-        position="sticky"
-        color="inherit"
-        elevation={1}
-        sx={{
-          top: appBarHidden ? 0 : 56,
-          zIndex: 1100,
-          transition: 'top 0.3s',
-        }}
-      >
-        <Tabs
-          value={tabValue}
-          onChange={handleTabChange}
-          variant="scrollable"
-          scrollButtons="auto"
-          sx={{ borderBottom: 1, borderColor: 'divider', minHeight: 48 }}
-          TabIndicatorProps={{ style: { height: 3, background: '#ff4081' } }}
-        >
-          <Tab icon={<AccessTimeIcon />} label="Zeitkapsel" sx={{ minHeight: 48 }} />
-          <Tab icon={<SportsEsportsIcon />} label="Spiele" sx={{ minHeight: 48 }} />
-          <Tab icon={<FavoriteIcon />} label="Musik" sx={{ minHeight: 48 }} />
-          <Tab icon={<MessageIcon />} label="Chat" sx={{ minHeight: 48 }} />
-          <Tab icon={<ListAltIcon />} label="Listen" sx={{ minHeight: 48 }} />
-          <Tab icon={<SmartToyIcon />} label="KI-Chatbot" sx={{ minHeight: 48 }} />
-        </Tabs>
-      </AppBar>
-      <Box component="main" sx={{ flexGrow: 1 }}>
-        <Container maxWidth="md" sx={{ pt: 4 }}>
-          <Paper sx={{ width: '100%', mb: 4, boxShadow: 0, bgcolor: 'transparent' }}>
-            <TabPanel value={tabValue} index={0}>
-              {loading ? (
-                <Typography color="primary">Lade Daten...</Typography>
-              ) : error ? (
-                <Typography color="error">{error}</Typography>
-              ) : (
-                <TimeCapsule 
-                  memories={memories}
-                  setMemories={setMemories}
-                  newMemory={newMemory}
-                  setNewMemory={setNewMemory}
-                  handleAddMemory={handleAddMemory}
-                  handleFileUpload={handleFileUpload}
-                />
-              )}
-            </TabPanel>
-            <TabPanel value={tabValue} index={1}>
-              <GamesTab wordleWords={wordleWords} />
-            </TabPanel>
-            <TabPanel value={tabValue} index={2}>
-              <MusicTab user={user} />
-            </TabPanel>
-            <TabPanel value={tabValue} index={3}>
-              <ChatTab user={user} />
-            </TabPanel>
-            <TabPanel value={tabValue} index={4}>
-              <SharedListsTab user={user} />
-            </TabPanel>
-            <TabPanel value={tabValue} index={5}>
-              <ChatbotTab user={user} />
-            </TabPanel>
-          </Paper>
-        </Container>
-      </Box>
-      <Footer />
+              <Tabs
+                value={tabValue}
+                onChange={handleTabChange}
+                variant="scrollable"
+                scrollButtons="auto"
+                sx={{ borderBottom: 1, borderColor: 'divider', minHeight: 48 }}
+                TabIndicatorProps={{ style: { height: 3, background: '#ff4081' } }}
+              >
+                <Tab icon={<AccessTimeIcon />} label="Zeitkapsel" sx={{ minHeight: 48 }} />
+                <Tab icon={<SportsEsportsIcon />} label="Spiele" sx={{ minHeight: 48 }} />
+                <Tab icon={<FavoriteIcon />} label="Musik" sx={{ minHeight: 48 }} />
+                <Tab icon={<MessageIcon />} label="Chat" sx={{ minHeight: 48 }} />
+                <Tab icon={<ListAltIcon />} label="Listen" sx={{ minHeight: 48 }} />
+                <Tab icon={<SmartToyIcon />} label="KI-Chatbot" sx={{ minHeight: 48 }} />
+              </Tabs>
+            </AppBar>
+            <Box component="main" sx={{ flexGrow: 1 }}>
+              <Container maxWidth="md" sx={{ pt: 4 }}>
+                <Paper sx={{ width: '100%', mb: 4, boxShadow: 0, bgcolor: 'transparent' }}>
+                  <TabPanel value={tabValue} index={0}>
+                    {loading ? (
+                      <Typography color="primary">Lade Daten...</Typography>
+                    ) : error ? (
+                      <Typography color="error">{error}</Typography>
+                    ) : (
+                      <TimeCapsule 
+                        memories={memories}
+                        setMemories={setMemories}
+                        newMemory={newMemory}
+                        setNewMemory={setNewMemory}
+                        handleAddMemory={handleAddMemory}
+                        handleFileUpload={handleFileUpload}
+                      />
+                    )}
+                  </TabPanel>
+                  <TabPanel value={tabValue} index={1}>
+                    <GamesTab wordleWords={wordleWords} />
+                  </TabPanel>
+                  <TabPanel value={tabValue} index={2}>
+                    <MusicTab user={user} />
+                  </TabPanel>
+                  <TabPanel value={tabValue} index={3}>
+                    <ChatTab user={user} />
+                  </TabPanel>
+                  <TabPanel value={tabValue} index={4}>
+                    <SharedListsTab user={user} />
+                  </TabPanel>
+                  <TabPanel value={tabValue} index={5}>
+                    <ChatbotTab user={user} />
+                  </TabPanel>
+                </Paper>
+              </Container>
+            </Box>
+            <Footer />
+          </>
+        } />
+      </Routes>
     </Box>
   );
 }
