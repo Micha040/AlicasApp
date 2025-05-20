@@ -58,6 +58,9 @@ import MinesweeperTab from './components/MinesweeperTab';
 import { Routes, Route } from 'react-router-dom';
 import ResetPassword from './components/ResetPassword';
 import ChatbotTab from './components/ChatbotTab';
+import Footer from './components/Footer';
+import Impressum from './components/Impressum';
+import Datenschutz from './components/Datenschutz';
 
 function HideOnScroll(props) {
   const { children, setAppBarHidden } = props;
@@ -746,6 +749,8 @@ function App() {
     return (
       <Routes>
         <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/impressum" element={<Impressum />} />
+        <Route path="/datenschutz" element={<Datenschutz />} />
         <Route path="*" element={
           <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: '#f5f5f5' }}>
             <Box sx={{ width: '100%', maxWidth: 400, p: 2 }}>
@@ -782,7 +787,7 @@ function App() {
   }
 
   return (
-    <Box sx={{ bgcolor: '#f5f5f5', minHeight: '100vh' }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
       <HideOnScroll setAppBarHidden={setAppBarHidden}>
         <AppBar position="sticky" color="default" elevation={0} sx={{ borderBottom: 1, borderColor: 'divider', height: 56, justifyContent: 'center' }}>
           <Toolbar sx={{ minHeight: 56, px: 2, display: 'flex', justifyContent: 'space-between' }}>
@@ -836,41 +841,44 @@ function App() {
           <Tab icon={<SmartToyIcon />} label="KI-Chatbot" sx={{ minHeight: 48 }} />
         </Tabs>
       </AppBar>
-      <Container maxWidth="md" sx={{ pt: 4 }}>
-        <Paper sx={{ width: '100%', mb: 4, boxShadow: 0, bgcolor: 'transparent' }}>
-          <TabPanel value={tabValue} index={0}>
-            {loading ? (
-              <Typography color="primary">Lade Daten...</Typography>
-            ) : error ? (
-              <Typography color="error">{error}</Typography>
-            ) : (
-              <TimeCapsule 
-                memories={memories}
-                setMemories={setMemories}
-                newMemory={newMemory}
-                setNewMemory={setNewMemory}
-                handleAddMemory={handleAddMemory}
-                handleFileUpload={handleFileUpload}
-              />
-            )}
-          </TabPanel>
-          <TabPanel value={tabValue} index={1}>
-            <GamesTab wordleWords={wordleWords} />
-          </TabPanel>
-          <TabPanel value={tabValue} index={2}>
-            <MusicTab user={user} />
-          </TabPanel>
-          <TabPanel value={tabValue} index={3}>
-            <ChatTab user={user} />
-          </TabPanel>
-          <TabPanel value={tabValue} index={4}>
-            <SharedListsTab user={user} />
-          </TabPanel>
-          <TabPanel value={tabValue} index={5}>
-            <ChatbotTab user={user} />
-          </TabPanel>
-        </Paper>
-      </Container>
+      <Box component="main" sx={{ flexGrow: 1 }}>
+        <Container maxWidth="md" sx={{ pt: 4 }}>
+          <Paper sx={{ width: '100%', mb: 4, boxShadow: 0, bgcolor: 'transparent' }}>
+            <TabPanel value={tabValue} index={0}>
+              {loading ? (
+                <Typography color="primary">Lade Daten...</Typography>
+              ) : error ? (
+                <Typography color="error">{error}</Typography>
+              ) : (
+                <TimeCapsule 
+                  memories={memories}
+                  setMemories={setMemories}
+                  newMemory={newMemory}
+                  setNewMemory={setNewMemory}
+                  handleAddMemory={handleAddMemory}
+                  handleFileUpload={handleFileUpload}
+                />
+              )}
+            </TabPanel>
+            <TabPanel value={tabValue} index={1}>
+              <GamesTab wordleWords={wordleWords} />
+            </TabPanel>
+            <TabPanel value={tabValue} index={2}>
+              <MusicTab user={user} />
+            </TabPanel>
+            <TabPanel value={tabValue} index={3}>
+              <ChatTab user={user} />
+            </TabPanel>
+            <TabPanel value={tabValue} index={4}>
+              <SharedListsTab user={user} />
+            </TabPanel>
+            <TabPanel value={tabValue} index={5}>
+              <ChatbotTab user={user} />
+            </TabPanel>
+          </Paper>
+        </Container>
+      </Box>
+      <Footer />
     </Box>
   );
 }
