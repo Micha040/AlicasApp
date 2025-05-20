@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../supabaseClient';
-import { Box, Card, CardContent, Typography, CircularProgress, Paper, Divider } from '@mui/material';
+import { Box, Card, CardContent, Typography, CircularProgress, Paper, Divider, Dialog } from '@mui/material';
 
 const HARVARD_API_KEY = process.env.REACT_APP_HARVARD_API_KEY;
 
@@ -8,6 +8,7 @@ export default function InspirationTab() {
   const [loading, setLoading] = useState(true);
   const [inspiration, setInspiration] = useState(null);
   const [error, setError] = useState('');
+  const [openImage, setOpenImage] = useState(false);
 
   useEffect(() => {
     const fetchInspiration = async () => {
@@ -78,7 +79,19 @@ export default function InspirationTab() {
         </Typography>
         {inspiration.artwork_image && (
           <Box sx={{ textAlign: 'center', mb: 2 }}>
-            <img src={inspiration.artwork_image} alt={inspiration.artwork_title} style={{ maxWidth: '100%', borderRadius: 8, maxHeight: 320 }} />
+            <img
+              src={inspiration.artwork_image}
+              alt={inspiration.artwork_title}
+              style={{ maxWidth: '100%', borderRadius: 8, maxHeight: 320, cursor: 'pointer' }}
+              onClick={() => setOpenImage(true)}
+            />
+            <Dialog open={openImage} onClose={() => setOpenImage(false)} maxWidth="lg">
+              <img
+                src={inspiration.artwork_image}
+                alt={inspiration.artwork_title}
+                style={{ maxWidth: '90vw', maxHeight: '90vh', display: 'block', margin: 'auto' }}
+              />
+            </Dialog>
           </Box>
         )}
         <Typography variant="h6" align="center">{inspiration.artwork_title}</Typography>
