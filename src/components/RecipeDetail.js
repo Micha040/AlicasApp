@@ -44,12 +44,17 @@ export default function RecipeDetail() {
     const getCurrentUser = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
-        const { data: userData } = await supabase
+        const { data: userData, error } = await supabase
           .from('users')
           .select('*')
           .eq('auth_id', session.user.id)
           .single();
+        if (!userData) {
+          console.log('Kein User in eigener Tabelle gefunden! Session-User-ID:', session.user.id, 'Fehler:', error);
+        }
         setCurrentUser(userData);
+      } else {
+        console.log('Keine Supabase-Session gefunden!');
       }
     };
     getCurrentUser();
