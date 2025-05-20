@@ -40,34 +40,26 @@ export default function Impressum() {
             Angaben gemäß § 5 TMG
           </Typography>
           <Typography variant="body1" paragraph sx={{ color: 'text.secondary' }}>
-            [Dein Name]<br />
-            [Deine Adresse]<br />
-            [Deine PLZ und Stadt]
+            Micha Kröger<br />
+            Elbtreppe 13<br />
+            Hamburg, 22763
           </Typography>
           
           <Typography variant="h6" color="primary" gutterBottom sx={{ mt: 4 }}>
             Kontakt
           </Typography>
-          <Typography variant="body1" paragraph sx={{ color: 'text.secondary' }}>
-            Telefon: [Deine Telefonnummer]<br />
-            E-Mail: [Deine E-Mail-Adresse]
+          <Typography variant="body1" paragraph sx={{ color: 'text.secondary' }}><br />
+            E-Mail: mkroeger.hh@gmail.com
           </Typography>
 
-          <Typography variant="h6" color="primary" gutterBottom sx={{ mt: 4 }}>
-            Umsatzsteuer-ID
-          </Typography>
-          <Typography variant="body1" paragraph sx={{ color: 'text.secondary' }}>
-            Umsatzsteuer-Identifikationsnummer gemäß §27 a Umsatzsteuergesetz:<br />
-            [Deine USt-IdNr.]
-          </Typography>
 
           <Typography variant="h6" color="primary" gutterBottom sx={{ mt: 4 }}>
             Verantwortlich für den Inhalt nach § 55 Abs. 2 RStV
           </Typography>
           <Typography variant="body1" paragraph sx={{ color: 'text.secondary' }}>
-            [Dein Name]<br />
-            [Deine Adresse]<br />
-            [Deine PLZ und Stadt]
+            Micha Kröger<br />
+            Elbtreppe 13<br />
+            Hamburg, 22763
           </Typography>
 
           <Typography variant="h6" color="primary" gutterBottom sx={{ mt: 4 }}>
