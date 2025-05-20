@@ -14,20 +14,19 @@ import {
   DialogActions,
   Fab,
   Snackbar,
-  Alert
+  Alert,
+  Avatar
 } from '@mui/material';
 import { motion } from 'framer-motion';
 import AddIcon from '@mui/icons-material/Add';
 import AddPhotoAlternateIcon from '@mui/icons-material/AddPhotoAlternate';
-import VideoLibraryIcon from '@mui/icons-material/VideoLibrary';
-import MessageIcon from '@mui/icons-material/Message';
 import { supabase } from '../supabaseClient';
 
-export default function TimeCapsuleTab() {
+export default function TimeCapsuleTab({ user }) {
   const [memories, setMemories] = useState([]);
   const [newMemory, setNewMemory] = useState({
-    type: 'message',
     content: '',
+    image_url: '',
     date: new Date().toISOString().split('T')[0]
   });
   const [loading, setLoading] = useState(false);
@@ -54,49 +53,48 @@ export default function TimeCapsuleTab() {
   };
 
   const handleAddMemory = async () => {
-    if (newMemory.content.trim()) {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('memories')
-        .insert([
-          {
-            type: newMemory.type,
-            content: newMemory.content,
-            date: newMemory.date
-          }
-        ])
-        .select();
-      if (error) {
-        setSnackbar({
-          open: true,
-          message: 'Fehler beim Speichern: ' + error.message,
-          severity: 'error'
-        });
-        setLoading(false);
-        return;
-      }
-      setMemories([data[0], ...memories]);
-      setNewMemory({ type: 'message', content: '', date: new Date().toISOString().split('T')[0] });
-      setOpenDialog(false);
+    if (!newMemory.content.trim() && !newMemory.image_url) {
+      setSnackbar({ open: true, message: 'Bitte Text und/oder Bild hinzufügen.', severity: 'error' });
+      return;
+    }
+    setLoading(true);
+    const { data, error } = await supabase
+      .from('memories')
+      .insert([
+        {
+          content: newMemory.content,
+          image_url: newMemory.image_url,
+          date: newMemory.date,
+          posted_by: user?.username || 'Unbekannt'
+        }
+      ])
+      .select();
+    if (error) {
       setSnackbar({
         open: true,
-        message: 'Erinnerung erfolgreich gespeichert!',
-        severity: 'success'
+        message: 'Fehler beim Speichern: ' + error.message,
+        severity: 'error'
       });
       setLoading(false);
+      return;
     }
+    setMemories([data[0], ...memories]);
+    setNewMemory({ content: '', image_url: '', date: new Date().toISOString().split('T')[0] });
+    setOpenDialog(false);
+    setSnackbar({
+      open: true,
+      message: 'Erinnerung erfolgreich gespeichert!',
+      severity: 'success'
+    });
+    setLoading(false);
   };
 
-  const handleFileUpload = (event, type) => {
+  const handleFileUpload = (event) => {
     const file = event.target.files[0];
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        setNewMemory({
-          type,
-          content: reader.result,
-          date: new Date().toISOString().split('T')[0]
-        });
+        setNewMemory((prev) => ({ ...prev, image_url: reader.result }));
       };
       reader.readAsDataURL(file);
     }
@@ -118,22 +116,25 @@ export default function TimeCapsuleTab() {
             >
               <Card>
                 <CardContent>
-                  {memory.type === 'message' && (
-                    <Typography variant="body1">{memory.content}</Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                    <Avatar sx={{ width: 32, height: 32, mr: 1 }}>
+                      {memory.posted_by ? memory.posted_by[0]?.toUpperCase() : '?'}
+                    </Avatar>
+                    <Typography variant="subtitle2" color="text.secondary">
+                      Gepostet von: {memory.posted_by || 'Unbekannt'}
+                    </Typography>
+                  </Box>
+                  {memory.content && (
+                    <Typography variant="body1" sx={{ mb: memory.image_url ? 2 : 0 }}>{memory.content}</Typography>
                   )}
-                  {memory.type === 'photo' && (
-                    <img 
-                      src={memory.content} 
-                      alt="Memory" 
-                      style={{ maxWidth: '100%', height: 'auto' }} 
-                    />
-                  )}
-                  {memory.type === 'video' && (
-                    <video 
-                      controls 
-                      style={{ maxWidth: '100%' }}
-                      src={memory.content}
-                    />
+                  {memory.image_url && (
+                    <Box sx={{ mb: 2 }}>
+                      <img 
+                        src={memory.image_url} 
+                        alt="Memory" 
+                        style={{ maxWidth: '100%', maxHeight: 300, borderRadius: 8 }} 
+                      />
+                    </Box>
                   )}
                   <Typography variant="caption" color="textSecondary">
                     {new Date(memory.date).toLocaleDateString()}
@@ -173,51 +174,26 @@ export default function TimeCapsuleTab() {
               onChange={(e) => setNewMemory({ ...newMemory, content: e.target.value })}
               sx={{ mb: 2 }}
             />
-            
             <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', mb: 2 }}>
               <input
                 accept="image/*"
                 style={{ display: 'none' }}
                 id="photo-upload"
                 type="file"
-                onChange={(e) => handleFileUpload(e, 'photo')}
+                onChange={handleFileUpload}
               />
               <label htmlFor="photo-upload">
                 <IconButton component="span" color="primary">
                   <AddPhotoAlternateIcon />
                 </IconButton>
               </label>
-
-              <input
-                accept="video/*"
-                style={{ display: 'none' }}
-                id="video-upload"
-                type="file"
-                onChange={(e) => handleFileUpload(e, 'video')}
-              />
-              <label htmlFor="video-upload">
-                <IconButton component="span" color="primary">
-                  <VideoLibraryIcon />
-                </IconButton>
-              </label>
             </Box>
-
-            {newMemory.type === 'photo' && newMemory.content && (
+            {newMemory.image_url && (
               <Box sx={{ mb: 2 }}>
                 <img 
-                  src={newMemory.content} 
+                  src={newMemory.image_url} 
                   alt="Vorschau" 
                   style={{ maxWidth: '100%', maxHeight: 200, borderRadius: 8 }} 
-                />
-              </Box>
-            )}
-
-            {newMemory.type === 'video' && newMemory.content && (
-              <Box sx={{ mb: 2 }}>
-                <video 
-                  controls 
-                  style={{ maxWidth: '100%', maxHeight: 200, borderRadius: 8 }}
-                  src={newMemory.content}
                 />
               </Box>
             )}
@@ -229,8 +205,7 @@ export default function TimeCapsuleTab() {
             onClick={handleAddMemory} 
             variant="contained" 
             color="primary"
-            startIcon={<MessageIcon />}
-            disabled={loading || !newMemory.content.trim()}
+            disabled={loading || (!newMemory.content.trim() && !newMemory.image_url)}
           >
             Speichern
           </Button>
