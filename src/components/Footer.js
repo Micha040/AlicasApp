@@ -1,5 +1,6 @@
 import React from 'react';
-import { Box, Container, Link, Typography } from '@mui/material';
+import { Box, Container, Typography } from '@mui/material';
+import { Link } from 'react-router-dom';
 
 export default function Footer() {
   return (
@@ -23,18 +24,28 @@ export default function Footer() {
           }}
         >
           <Link
-            href="/impressum"
-            color="inherit"
-            underline="hover"
-            sx={{ color: 'text.secondary' }}
+            to="/impressum"
+            style={{
+              color: 'inherit',
+              textDecoration: 'none',
+              color: 'text.secondary',
+              '&:hover': {
+                textDecoration: 'underline'
+              }
+            }}
           >
             Impressum
           </Link>
           <Link
-            href="/datenschutz"
-            color="inherit"
-            underline="hover"
-            sx={{ color: 'text.secondary' }}
+            to="/datenschutz"
+            style={{
+              color: 'inherit',
+              textDecoration: 'none',
+              color: 'text.secondary',
+              '&:hover': {
+                textDecoration: 'underline'
+              }
+            }}
           >
             Datenschutz
           </Link>
