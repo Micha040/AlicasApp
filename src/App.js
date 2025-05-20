@@ -62,6 +62,7 @@ import Footer from './components/Footer';
 import Impressum from './components/Impressum';
 import Datenschutz from './components/Datenschutz';
 import RecipesTab from './components/RecipesTab';
+import RecipeDetail from './components/RecipeDetail';
 
 function HideOnScroll(props) {
   const { children, setAppBarHidden } = props;
@@ -792,6 +793,7 @@ function App() {
       <Routes>
         <Route path="/impressum" element={<Impressum />} />
         <Route path="/datenschutz" element={<Datenschutz />} />
+        <Route path="/rezepte/:id" element={<RecipeDetail />} />
         <Route path="*" element={
           <>
             <HideOnScroll setAppBarHidden={setAppBarHidden}>

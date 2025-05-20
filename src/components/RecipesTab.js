@@ -33,6 +33,7 @@ import {
   Delete as DeleteIcon
 } from '@mui/icons-material';
 import { supabase } from '../supabaseClient';
+import { useNavigate } from 'react-router-dom';
 
 export default function RecipesTab({ user }) {
   const [recipes, setRecipes] = useState([]);
@@ -51,6 +52,7 @@ export default function RecipesTab({ user }) {
   });
   const [categories, setCategories] = useState([]);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchRecipes();
@@ -241,7 +243,10 @@ export default function RecipesTab({ user }) {
       <Grid container spacing={3}>
         {recipes.map((recipe) => (
           <Grid item xs={12} sm={6} md={4} key={recipe.id}>
-            <Card>
+            <Card
+              onClick={() => navigate(`/rezepte/${recipe.id}`)}
+              sx={{ cursor: 'pointer', transition: 'box-shadow 0.2s', '&:hover': { boxShadow: 6 } }}
+            >
               <CardMedia
                 component="img"
                 height="200"
