@@ -38,8 +38,21 @@ export default function RecipeDetail() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [currentUser, setCurrentUser] = useState(null);
 
   useEffect(() => {
+    const getCurrentUser = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        const { data: userData } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', session.user.id)
+          .single();
+        setCurrentUser(userData);
+      }
+    };
+    getCurrentUser();
     fetchRecipe();
     fetchCategories();
   }, [id]);
@@ -207,7 +220,7 @@ export default function RecipeDetail() {
   if (loading) return <Box sx={{ textAlign: 'center', mt: 6 }}><CircularProgress /></Box>;
   if (!recipe) return <Typography>Rezept nicht gefunden.</Typography>;
 
-  const isOwner = recipe.user_id === supabase.auth.user()?.id;
+  const isOwner = recipe.user_id === currentUser?.id;
 
   return (
     <Box sx={{ maxWidth: 700, mx: 'auto', mt: 4 }}>
