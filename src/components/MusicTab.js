@@ -97,97 +97,100 @@ export default function MusicTab({ user }) {
   };
 
   return (
-    <Box sx={{ maxWidth: 600, mx: 'auto', mt: 2 }}>
-      <Typography variant="h5" gutterBottom>Musik-Tab: Spotify-Songs vorschlagen</Typography>
-      <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
-        <TextField
-          label="Spotify-Link oder Songname"
-          value={query}
-          onChange={e => setQuery(e.target.value)}
-          fullWidth
-          disabled={loading}
-        />
-        <Button variant="contained" color="primary" onClick={handleSearch} disabled={loading}>
-          Suchen
-        </Button>
-      </Box>
-      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-      {success && <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>}
-      {searchResult && (
-        <Card sx={{ mb: 2 }}>
-          <CardContent sx={{ display: 'flex', alignItems: 'center' }}>
-            <CardMedia
-              component="img"
-              image={searchResult.cover_url}
-              alt={searchResult.title}
-              sx={{ width: 80, height: 80, mr: 2 }}
-            />
-            <Box>
-              <Typography variant="h6">{searchResult.title}</Typography>
-              <Typography variant="subtitle1" color="text.secondary">{searchResult.artist}</Typography>
-              {searchResult.preview_url && (
-                <audio controls src={searchResult.preview_url} style={{ marginTop: 8 }}>
-                  Dein Browser unterstützt kein Audio.
-                </audio>
-              )}
-              <Button variant="contained" color="secondary" sx={{ mt: 1 }} onClick={handlePost}>
-                Song posten
-              </Button>
-            </Box>
-          </CardContent>
-        </Card>
-      )}
-      <Typography variant="h6" sx={{ mt: 4, mb: 2 }}>Alle geposteten Songs</Typography>
-      <List>
-        {songs.map(song => (
-          <React.Fragment key={song.spotify_id + song.created_at}>
-            <ListItem alignItems="flex-start">
-              <ListItemAvatar>
-                <Avatar src={song.cover_url} alt={song.title} />
-              </ListItemAvatar>
-              <ListItemText
-                primary={song.title + ' – ' + song.artist}
-                secondary={
-                  <>
-                    {song.posted_by && <span>Vorgeschlagen von: {song.posted_by} · </span>}
-                    {song.created_at && new Date(song.created_at).toLocaleString()}
-                  </>
-                }
+    <Box sx={{ textAlign: 'center', mt: 4, mb: 4 }}>
+      <Typography variant="h4" component="h1" sx={{ fontWeight: 'bold', mb: 3 }}>Musik</Typography>
+      <Box sx={{ maxWidth: 600, mx: 'auto', mt: 2 }}>
+        <Typography variant="h5" gutterBottom>Musik-Tab: Spotify-Songs vorschlagen</Typography>
+        <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+          <TextField
+            label="Spotify-Link oder Songname"
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            fullWidth
+            disabled={loading}
+          />
+          <Button variant="contained" color="primary" onClick={handleSearch} disabled={loading}>
+            Suchen
+          </Button>
+        </Box>
+        {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+        {success && <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>}
+        {searchResult && (
+          <Card sx={{ mb: 2 }}>
+            <CardContent sx={{ display: 'flex', alignItems: 'center' }}>
+              <CardMedia
+                component="img"
+                image={searchResult.cover_url}
+                alt={searchResult.title}
+                sx={{ width: 80, height: 80, mr: 2 }}
               />
-              {song.preview_url && (
-                <Button
-                  variant="contained"
-                  color={previewOpen === song.spotify_id ? 'secondary' : 'primary'}
-                  size="small"
-                  sx={{ ml: 1 }}
-                  onClick={() => setPreviewOpen(previewOpen === song.spotify_id ? null : song.spotify_id)}
-                >
-                  {previewOpen === song.spotify_id ? 'Schließen' : 'Preview'}
+              <Box>
+                <Typography variant="h6">{searchResult.title}</Typography>
+                <Typography variant="subtitle1" color="text.secondary">{searchResult.artist}</Typography>
+                {searchResult.preview_url && (
+                  <audio controls src={searchResult.preview_url} style={{ marginTop: 8 }}>
+                    Dein Browser unterstützt kein Audio.
+                  </audio>
+                )}
+                <Button variant="contained" color="secondary" sx={{ mt: 1 }} onClick={handlePost}>
+                  Song posten
                 </Button>
-              )}
-              {song.spotify_id && (
-                <Button
-                  href={`https://open.spotify.com/track/${song.spotify_id}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  variant="outlined"
-                  size="small"
-                  sx={{ ml: 2 }}
-                >
-                  Auf Spotify öffnen
-                </Button>
-              )}
-            </ListItem>
-            {previewOpen === song.spotify_id && song.preview_url && (
-              <Box sx={{ pl: 10, pb: 2 }}>
-                <audio controls autoPlay src={song.preview_url}>
-                  Dein Browser unterstützt kein Audio.
-                </audio>
               </Box>
-            )}
-          </React.Fragment>
-        ))}
-      </List>
+            </CardContent>
+          </Card>
+        )}
+        <Typography variant="h6" sx={{ mt: 4, mb: 2 }}>Alle geposteten Songs</Typography>
+        <List>
+          {songs.map(song => (
+            <React.Fragment key={song.spotify_id + song.created_at}>
+              <ListItem alignItems="flex-start">
+                <ListItemAvatar>
+                  <Avatar src={song.cover_url} alt={song.title} />
+                </ListItemAvatar>
+                <ListItemText
+                  primary={song.title + ' – ' + song.artist}
+                  secondary={
+                    <>
+                      {song.posted_by && <span>Vorgeschlagen von: {song.posted_by} · </span>}
+                      {song.created_at && new Date(song.created_at).toLocaleString()}
+                    </>
+                  }
+                />
+                {song.preview_url && (
+                  <Button
+                    variant="contained"
+                    color={previewOpen === song.spotify_id ? 'secondary' : 'primary'}
+                    size="small"
+                    sx={{ ml: 1 }}
+                    onClick={() => setPreviewOpen(previewOpen === song.spotify_id ? null : song.spotify_id)}
+                  >
+                    {previewOpen === song.spotify_id ? 'Schließen' : 'Preview'}
+                  </Button>
+                )}
+                {song.spotify_id && (
+                  <Button
+                    href={`https://open.spotify.com/track/${song.spotify_id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    variant="outlined"
+                    size="small"
+                    sx={{ ml: 2 }}
+                  >
+                    Auf Spotify öffnen
+                  </Button>
+                )}
+              </ListItem>
+              {previewOpen === song.spotify_id && song.preview_url && (
+                <Box sx={{ pl: 10, pb: 2 }}>
+                  <audio controls autoPlay src={song.preview_url}>
+                    Dein Browser unterstützt kein Audio.
+                  </audio>
+                </Box>
+              )}
+            </React.Fragment>
+          ))}
+        </List>
+      </Box>
     </Box>
   );
 } 

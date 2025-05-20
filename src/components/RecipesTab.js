@@ -277,15 +277,16 @@ export default function RecipesTab({ user }) {
   };
 
   return (
-    <Box>
+    <Box sx={{ position: 'relative', minHeight: '100vh', pb: 8 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h5" component="h2">
           Rezepte
         </Typography>
         <Fab
           color="primary"
+          aria-label="add"
           onClick={() => setOpenDialog(true)}
-          sx={{ position: 'fixed', bottom: 16, right: 16 }}
+          sx={{ position: 'fixed', bottom: 16, right: 16, zIndex: 1000 }}
         >
           <AddIcon />
         </Fab>

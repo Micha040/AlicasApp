@@ -117,8 +117,8 @@ export default function MinesweeperTab() {
   const cellSize = window.innerWidth < 600 ? 28 : 36;
 
   return (
-    <Box sx={{ textAlign: 'center', mt: 2 }}>
-      <Typography variant="h5" gutterBottom>Minesweeper</Typography>
+    <Box sx={{ textAlign: 'center', mt: 4, mb: 4 }}>
+      <Typography variant="h4" component="h1" sx={{ fontWeight: 'bold', mb: 3 }}>Minesweeper</Typography>
       <Typography variant="body2" gutterBottom>
         Finde alle {MINES} Minen! Klicke auf ein Feld, um es aufzudecken.
       </Typography>
