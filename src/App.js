@@ -845,7 +845,7 @@ function App() {
                 <Tab icon={<FavoriteIcon />} label="Musik" sx={{ minHeight: 48 }} />
                 <Tab icon={<MessageIcon />} label="Chat" sx={{ minHeight: 48 }} />
                 <Tab icon={<ListAltIcon />} label="Listen" sx={{ minHeight: 48 }} />
-                <Tab label="Rezepte" sx={{ minHeight: 48 }} />
+                <Tab icon={<RestaurantIcon />} label="Rezepte" sx={{ minHeight: 48 }} />
               </Tabs>
             </AppBar>
             <Box component="main" sx={{ flexGrow: 1 }}>
