@@ -25,6 +25,7 @@ import {
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
+import { supabase } from '../supabaseClient';
 
 export default function RecipeDetail() {
   const { id } = useParams();
