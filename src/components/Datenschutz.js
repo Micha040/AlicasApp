@@ -57,20 +57,59 @@ export default function Datenschutz() {
           </Typography>
 
           <Typography variant="h6" color="primary" gutterBottom sx={{ mt: 4 }}>
-            3. Allgemeine Hinweise und Pflichtinformationen
-          </Typography>
-          <Typography variant="h6" color="primary" gutterBottom sx={{ mt: 2, fontSize: '1.1rem' }}>
-            Datenschutz
+            3. Welche Daten werden erfasst?
           </Typography>
           <Typography variant="body1" paragraph sx={{ color: 'text.secondary' }}>
-            Die Betreiber dieser Seiten nehmen den Schutz Ihrer persönlichen Daten sehr ernst. Wir behandeln Ihre personenbezogenen Daten vertraulich und entsprechend der gesetzlichen Datenschutzvorschriften sowie dieser Datenschutzerklärung.
+            Auf dieser Website werden folgende personenbezogene Daten erfasst:
+          </Typography>
+          <Typography variant="body1" component="ul" sx={{ color: 'text.secondary', pl: 2 }}>
+            <li>E-Mail-Adresse (für Login/Registrierung)</li>
+            <li>Profilbild (optional)</li>
+            <li>Benutzername</li>
+            <li>Zeitkapsel-Einträge (Nachrichten, Bilder, Videos)</li>
+            <li>Chat-Nachrichten</li>
+            <li>Spielstand-Daten</li>
           </Typography>
 
           <Typography variant="h6" color="primary" gutterBottom sx={{ mt: 4 }}>
-            4. Datenerfassung auf dieser Website
+            4. Wie werden Ihre Daten verarbeitet?
           </Typography>
           <Typography variant="body1" paragraph sx={{ color: 'text.secondary' }}>
-            Wir verwenden Supabase als Datenbankdienst. Die Datenschutzerklärung von Supabase finden Sie unter: https://supabase.com/privacy
+            Wir verwenden Supabase als Datenbankdienst. Die Datenschutzerklärung von Supabase finden Sie unter: 
+            <a href="https://supabase.com/privacy" target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'underline' }}>
+              https://supabase.com/privacy
+            </a>
+          </Typography>
+
+          <Typography variant="h6" color="primary" gutterBottom sx={{ mt: 4 }}>
+            5. Ihre Rechte
+          </Typography>
+          <Typography variant="body1" paragraph sx={{ color: 'text.secondary' }}>
+            Sie haben jederzeit das Recht:
+          </Typography>
+          <Typography variant="body1" component="ul" sx={{ color: 'text.secondary', pl: 2 }}>
+            <li>Auskunft über Ihre gespeicherten Daten zu erhalten</li>
+            <li>Diese berichtigen zu lassen</li>
+            <li>Die Löschung zu verlangen</li>
+            <li>Die Verarbeitung einzuschränken</li>
+            <li>Der Verarbeitung zu widersprechen</li>
+            <li>Ihre Daten in einem strukturierten Format zu erhalten</li>
+          </Typography>
+
+          <Typography variant="h6" color="primary" gutterBottom sx={{ mt: 4 }}>
+            6. Speicherdauer
+          </Typography>
+          <Typography variant="body1" paragraph sx={{ color: 'text.secondary' }}>
+            Ihre Daten werden so lange gespeichert, wie es für die genannten Zwecke erforderlich ist. 
+            Sie können Ihr Konto jederzeit löschen, wodurch alle Ihre personenbezogenen Daten gelöscht werden.
+          </Typography>
+
+          <Typography variant="h6" color="primary" gutterBottom sx={{ mt: 4 }}>
+            7. Cookies
+          </Typography>
+          <Typography variant="body1" paragraph sx={{ color: 'text.secondary' }}>
+            Diese Website verwendet nur technisch notwendige Cookies für die Funktionalität der Website. 
+            Es werden keine Tracking-Cookies oder Cookies von Drittanbietern verwendet.
           </Typography>
         </Box>
       </Paper>

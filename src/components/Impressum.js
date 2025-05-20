@@ -52,7 +52,15 @@ export default function Impressum() {
             Telefon: [Deine Telefonnummer]<br />
             E-Mail: [Deine E-Mail-Adresse]
           </Typography>
-          
+
+          <Typography variant="h6" color="primary" gutterBottom sx={{ mt: 4 }}>
+            Umsatzsteuer-ID
+          </Typography>
+          <Typography variant="body1" paragraph sx={{ color: 'text.secondary' }}>
+            Umsatzsteuer-Identifikationsnummer gemäß §27 a Umsatzsteuergesetz:<br />
+            [Deine USt-IdNr.]
+          </Typography>
+
           <Typography variant="h6" color="primary" gutterBottom sx={{ mt: 4 }}>
             Verantwortlich für den Inhalt nach § 55 Abs. 2 RStV
           </Typography>
@@ -60,6 +68,24 @@ export default function Impressum() {
             [Dein Name]<br />
             [Deine Adresse]<br />
             [Deine PLZ und Stadt]
+          </Typography>
+
+          <Typography variant="h6" color="primary" gutterBottom sx={{ mt: 4 }}>
+            EU-Streitschlichtung
+          </Typography>
+          <Typography variant="body1" paragraph sx={{ color: 'text.secondary' }}>
+            Die Europäische Kommission stellt eine Plattform zur Online-Streitbeilegung (OS) bereit: 
+            <a href="https://ec.europa.eu/consumers/odr/" target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'underline' }}>
+              https://ec.europa.eu/consumers/odr/
+            </a>
+          </Typography>
+
+          <Typography variant="h6" color="primary" gutterBottom sx={{ mt: 4 }}>
+            Verbraucherschlichtung
+          </Typography>
+          <Typography variant="body1" paragraph sx={{ color: 'text.secondary' }}>
+            Wir sind nicht bereit oder verpflichtet, an Streitbeilegungsverfahren vor einer 
+            Verbraucherschlichtungsstelle teilzunehmen.
           </Typography>
         </Box>
       </Paper>
