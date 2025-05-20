@@ -57,7 +57,6 @@ import SharedListsTab from './components/SharedListsTab';
 import MinesweeperTab from './components/MinesweeperTab';
 import { Routes, Route } from 'react-router-dom';
 import ResetPassword from './components/ResetPassword';
-import ChatbotTab from './components/ChatbotTab';
 import Footer from './components/Footer';
 import Impressum from './components/Impressum';
 import Datenschutz from './components/Datenschutz';
@@ -846,7 +845,6 @@ function App() {
                 <Tab icon={<FavoriteIcon />} label="Musik" sx={{ minHeight: 48 }} />
                 <Tab icon={<MessageIcon />} label="Chat" sx={{ minHeight: 48 }} />
                 <Tab icon={<ListAltIcon />} label="Listen" sx={{ minHeight: 48 }} />
-                <Tab icon={<SmartToyIcon />} label="KI-Chatbot" sx={{ minHeight: 48 }} />
                 <Tab label="Rezepte" sx={{ minHeight: 48 }} />
               </Tabs>
             </AppBar>
@@ -882,9 +880,6 @@ function App() {
                     <SharedListsTab user={user} />
                   </TabPanel>
                   <TabPanel value={tabValue} index={5}>
-                    <ChatbotTab user={user} />
-                  </TabPanel>
-                  <TabPanel value={tabValue} index={6}>
                     <RecipesTab user={user} />
                   </TabPanel>
                 </Paper>
