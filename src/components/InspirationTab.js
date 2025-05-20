@@ -32,7 +32,7 @@ export default function InspirationTab() {
         const artJson = await artRes.json();
         const artwork = artJson.records && artJson.records[0];
         // Zitat
-        const quoteRes = await fetch('https://zenquotes.io/api/random');
+        const quoteRes = await fetch('/api/zenquote');
         const quoteJson = await quoteRes.json();
         const quote = { q: quoteJson[0].q, a: quoteJson[0].a };
         // Fun Fact
