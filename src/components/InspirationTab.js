@@ -31,6 +31,8 @@ export default function InspirationTab() {
         const artRes = await fetch(`https://api.harvardartmuseums.org/object?size=1&sort=random&apikey=${HARVARD_API_KEY}&hasimage=1`);
         const artJson = await artRes.json();
         const artwork = artJson.records && artJson.records[0];
+        console.log('Kunstwerk:', artwork);
+        console.log('Bild-URL:', artwork?.primaryimageurl);
         // Zitat
         const quoteRes = await fetch('/api/zenquote');
         const quoteJson = await quoteRes.json();
