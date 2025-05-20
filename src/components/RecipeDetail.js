@@ -45,7 +45,7 @@ export default function RecipeDetail() {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
         const { data: userData } = await supabase
-          .from('users')
+          .from('profiles')
           .select('*')
           .eq('id', session.user.id)
           .single();
@@ -220,7 +220,7 @@ export default function RecipeDetail() {
   if (loading) return <Box sx={{ textAlign: 'center', mt: 6 }}><CircularProgress /></Box>;
   if (!recipe) return <Typography>Rezept nicht gefunden.</Typography>;
 
-  const isOwner = recipe.user_id === currentUser?.id;
+  const isOwner = recipe.user?.username === currentUser?.username;
 
   return (
     <Box sx={{ maxWidth: 700, mx: 'auto', mt: 4 }}>

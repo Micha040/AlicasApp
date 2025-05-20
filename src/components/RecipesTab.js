@@ -79,7 +79,7 @@ export default function RecipesTab({ user }) {
         filtered = filtered.filter(recipe => 
           recipe.title.toLowerCase().includes(searchLower) ||
           recipe.description.toLowerCase().includes(searchLower) ||
-          recipe.ingredients.some(ing => ing.name.toLowerCase().includes(searchLower))
+          recipe.ingredients?.some(ing => ing.name.toLowerCase().includes(searchLower))
         );
       }
 
@@ -323,7 +323,7 @@ export default function RecipesTab({ user }) {
       </Box>
 
       <Grid container spacing={3}>
-        {(filteredRecipes.length > 0 ? filteredRecipes : recipes).map((recipe) => (
+        {filteredRecipes.map((recipe) => (
           <Grid item xs={12} sm={6} md={4} key={recipe.id}>
             <Card
               onClick={() => navigate(`/rezepte/${recipe.id}`)}
