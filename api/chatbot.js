@@ -1,9 +1,8 @@
-import { Configuration, OpenAIApi } from 'openai';
+import OpenAI from 'openai';
 
-const configuration = new Configuration({
+const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
-const openai = new OpenAIApi(configuration);
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -15,13 +14,16 @@ export default async function handler(req, res) {
   }
   try {
     const prompt = `Du bist ein freundlicher, persönlicher Chatbot namens AlicaBot. Sprich den Nutzer "${username}" direkt an und antworte empathisch und kreativ.\n\nNutzer: ${message}\nAlicaBot:`;
-    const completion = await openai.createCompletion({
-      model: 'text-davinci-003',
-      prompt,
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-3.5-turbo',
+      messages: [
+        { role: 'system', content: 'Du bist ein freundlicher, persönlicher Chatbot namens AlicaBot.' },
+        { role: 'user', content: prompt }
+      ],
       max_tokens: 100,
       temperature: 0.8,
     });
-    const reply = completion.data.choices[0].text.trim();
+    const reply = completion.choices[0].message.content.trim();
     res.status(200).json({ reply });
   } catch (err) {
     res.status(500).json({ error: 'Fehler bei der KI-Antwort.' });
