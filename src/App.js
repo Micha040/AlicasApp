@@ -61,6 +61,7 @@ import ChatbotTab from './components/ChatbotTab';
 import Footer from './components/Footer';
 import Impressum from './components/Impressum';
 import Datenschutz from './components/Datenschutz';
+import RecipesTab from './components/RecipesTab';
 
 function HideOnScroll(props) {
   const { children, setAppBarHidden } = props;
@@ -844,6 +845,7 @@ function App() {
                 <Tab icon={<MessageIcon />} label="Chat" sx={{ minHeight: 48 }} />
                 <Tab icon={<ListAltIcon />} label="Listen" sx={{ minHeight: 48 }} />
                 <Tab icon={<SmartToyIcon />} label="KI-Chatbot" sx={{ minHeight: 48 }} />
+                <Tab label="Rezepte" sx={{ minHeight: 48 }} />
               </Tabs>
             </AppBar>
             <Box component="main" sx={{ flexGrow: 1 }}>
@@ -879,6 +881,9 @@ function App() {
                   </TabPanel>
                   <TabPanel value={tabValue} index={5}>
                     <ChatbotTab user={user} />
+                  </TabPanel>
+                  <TabPanel value={tabValue} index={6}>
+                    <RecipesTab user={user} />
                   </TabPanel>
                 </Paper>
               </Container>
