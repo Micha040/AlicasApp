@@ -222,6 +222,10 @@ export default function RecipeDetail() {
 
   const isOwner = recipe.user_id === currentUser?.id;
 
+  console.log('recipe.user_id:', recipe.user_id);
+  console.log('currentUser:', currentUser);
+  console.log('Vergleich:', recipe.user_id === currentUser?.id);
+
   return (
     <Box sx={{ maxWidth: 700, mx: 'auto', mt: 4 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
