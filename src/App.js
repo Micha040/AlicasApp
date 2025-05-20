@@ -46,6 +46,7 @@ import SportsEsportsIcon from '@mui/icons-material/SportsEsports';
 import QuizIcon from '@mui/icons-material/Quiz';
 import CompareIcon from '@mui/icons-material/Compare';
 import ListAltIcon from '@mui/icons-material/ListAlt';
+import SmartToyIcon from '@mui/icons-material/SmartToy';
 import { supabase } from './supabaseClient';
 import Register from './components/Register';
 import Login from './components/Login';
@@ -56,6 +57,7 @@ import SharedListsTab from './components/SharedListsTab';
 import MinesweeperTab from './components/MinesweeperTab';
 import { Routes, Route } from 'react-router-dom';
 import ResetPassword from './components/ResetPassword';
+import ChatbotTab from './components/ChatbotTab';
 
 function HideOnScroll(props) {
   const { children, setAppBarHidden } = props;
@@ -831,6 +833,7 @@ function App() {
           <Tab icon={<FavoriteIcon />} label="Musik" sx={{ minHeight: 48 }} />
           <Tab icon={<MessageIcon />} label="Chat" sx={{ minHeight: 48 }} />
           <Tab icon={<ListAltIcon />} label="Listen" sx={{ minHeight: 48 }} />
+          <Tab icon={<SmartToyIcon />} label="KI-Chatbot" sx={{ minHeight: 48 }} />
         </Tabs>
       </AppBar>
       <Container maxWidth="md" sx={{ pt: 4 }}>
@@ -862,6 +865,9 @@ function App() {
           </TabPanel>
           <TabPanel value={tabValue} index={4}>
             <SharedListsTab user={user} />
+          </TabPanel>
+          <TabPanel value={tabValue} index={5}>
+            <ChatbotTab user={user} />
           </TabPanel>
         </Paper>
       </Container>
