@@ -238,7 +238,17 @@ export default function RecipeDetail() {
         )}
         <CardContent sx={{ p: { xs: 1, sm: 2 } }}>
           <Box sx={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'flex-start' : 'center', justifyContent: 'space-between', mb: 2, gap: 2 }}>
-            <Typography variant={isMobile ? 'h5' : 'h4'} fontWeight={700} gutterBottom sx={{ flex: 1, wordBreak: 'break-word' }}>{recipe.title}</Typography>
+            {editMode ? (
+              <TextField
+                fullWidth
+                label="Titel"
+                value={editedRecipe.title}
+                onChange={(e) => setEditedRecipe({ ...editedRecipe, title: e.target.value })}
+                sx={{ mb: isMobile ? 2 : 0, fontWeight: 700, fontSize: isMobile ? 22 : 28 }}
+              />
+            ) : (
+              <Typography variant={isMobile ? 'h5' : 'h4'} fontWeight={700} gutterBottom sx={{ flex: 1, wordBreak: 'break-word' }}>{recipe.title}</Typography>
+            )}
             {isOwner && !editMode && (
               isMobile ? (
                 <Box sx={{ width: '100%', display: 'flex', gap: 2, mt: 1 }}>
@@ -260,48 +270,233 @@ export default function RecipeDetail() {
                 </Box>
               )
             )}
+            {editMode && (
+              <Box sx={{ width: isMobile ? '100%' : 'auto', display: 'flex', gap: 2, mt: isMobile ? 2 : 0 }}>
+                <Button variant="outlined" color="inherit" onClick={() => setEditMode(false)}>
+                  Abbrechen
+                </Button>
+                <Button variant="contained" color="primary" onClick={handleSave}>
+                  Speichern
+                </Button>
+              </Box>
+            )}
           </Box>
 
-          <Typography variant="subtitle1" color="text.secondary" gutterBottom sx={{ mb: 2, fontSize: isMobile ? '1rem' : '1.1rem' }}>
-            {recipe.description}
-          </Typography>
+          {editMode ? (
+            <TextField
+              fullWidth
+              label="Beschreibung"
+              multiline
+              rows={3}
+              value={editedRecipe.description}
+              onChange={(e) => setEditedRecipe({ ...editedRecipe, description: e.target.value })}
+              sx={{ mb: 2 }}
+            />
+          ) : (
+            <Typography variant="subtitle1" color="text.secondary" gutterBottom sx={{ mb: 2, fontSize: isMobile ? '1rem' : '1.1rem' }}>
+              {recipe.description}
+            </Typography>
+          )}
 
-          <Grid container spacing={2} sx={{ mb: 2 }}>
-            <Grid item xs={6} sm={3}><Typography variant="body2">Zubereitung: <b>{recipe.preparation_time} Min.</b></Typography></Grid>
-            <Grid item xs={6} sm={3}><Typography variant="body2">Kochzeit: <b>{recipe.cooking_time} Min.</b></Typography></Grid>
-            <Grid item xs={6} sm={3}><Typography variant="body2">Portionen: <b>{recipe.servings}</b></Typography></Grid>
-            <Grid item xs={6} sm={3}><Typography variant="body2">Schwierigkeit: <b>{recipe.difficulty}</b></Typography></Grid>
-          </Grid>
+          {editMode ? (
+            <Grid container spacing={2} sx={{ mb: 2 }}>
+              <Grid item xs={6} sm={3}>
+                <TextField
+                  fullWidth
+                  label="Zubereitung (Min.)"
+                  type="number"
+                  value={editedRecipe.preparation_time}
+                  onChange={e => setEditedRecipe({ ...editedRecipe, preparation_time: e.target.value })}
+                />
+              </Grid>
+              <Grid item xs={6} sm={3}>
+                <TextField
+                  fullWidth
+                  label="Kochzeit (Min.)"
+                  type="number"
+                  value={editedRecipe.cooking_time}
+                  onChange={e => setEditedRecipe({ ...editedRecipe, cooking_time: e.target.value })}
+                />
+              </Grid>
+              <Grid item xs={6} sm={3}>
+                <TextField
+                  fullWidth
+                  label="Portionen"
+                  type="number"
+                  value={editedRecipe.servings}
+                  onChange={e => setEditedRecipe({ ...editedRecipe, servings: e.target.value })}
+                />
+              </Grid>
+              <Grid item xs={6} sm={3}>
+                <FormControl fullWidth>
+                  <InputLabel>Schwierigkeitsgrad</InputLabel>
+                  <Select
+                    value={editedRecipe.difficulty}
+                    onChange={e => setEditedRecipe({ ...editedRecipe, difficulty: e.target.value })}
+                    label="Schwierigkeitsgrad"
+                  >
+                    <MenuItem value="Einfach">Einfach</MenuItem>
+                    <MenuItem value="Mittel">Mittel</MenuItem>
+                    <MenuItem value="Schwer">Schwer</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+            </Grid>
+          ) : (
+            <Grid container spacing={2} sx={{ mb: 2 }}>
+              <Grid item xs={6} sm={3}><Typography variant="body2">Zubereitung: <b>{recipe.preparation_time} Min.</b></Typography></Grid>
+              <Grid item xs={6} sm={3}><Typography variant="body2">Kochzeit: <b>{recipe.cooking_time} Min.</b></Typography></Grid>
+              <Grid item xs={6} sm={3}><Typography variant="body2">Portionen: <b>{recipe.servings}</b></Typography></Grid>
+              <Grid item xs={6} sm={3}><Typography variant="body2">Schwierigkeit: <b>{recipe.difficulty}</b></Typography></Grid>
+            </Grid>
+          )}
 
-          <Box sx={{ mb: 2, display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-            {recipe.recipe_categories?.map(rc => (
-              rc.categories && <Chip key={rc.categories.id} label={rc.categories.name} color="primary" variant="outlined" />
-            ))}
-          </Box>
+          {editMode ? (
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="h6" fontWeight={600} sx={{ mb: 1 }}>Kategorien</Typography>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                {categories.map((category) => (
+                  <Chip
+                    key={category.id}
+                    label={category.name}
+                    onClick={() => {
+                      const newCategories = editedRecipe.categories.includes(category.id)
+                        ? editedRecipe.categories.filter(id => id !== category.id)
+                        : [...editedRecipe.categories, category.id];
+                      setEditedRecipe({ ...editedRecipe, categories: newCategories });
+                    }}
+                    color={editedRecipe.categories.includes(category.id) ? 'primary' : 'default'}
+                  />
+                ))}
+              </Box>
+            </Box>
+          ) : (
+            <Box sx={{ mb: 2, display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+              {recipe.recipe_categories?.map(rc => (
+                rc.categories && <Chip key={rc.categories.id} label={rc.categories.name} color="primary" variant="outlined" />
+              ))}
+            </Box>
+          )}
 
           <Box sx={{ mb: 3 }}>
             <Typography variant="h6" fontWeight={600} sx={{ mb: 1 }}>Zutaten</Typography>
-            <ul style={{ margin: 0, paddingLeft: 18 }}>
-              {recipe.ingredients?.map(ing => (
-                <li key={ing.id} style={{ marginBottom: 4, fontSize: isMobile ? 15 : 16 }}>{ing.amount} {ing.unit} {ing.name}</li>
-              ))}
-            </ul>
+            {editMode ? (
+              <>
+                {editedRecipe.ingredients.map((ing, index) => (
+                  <Box key={index} sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap' }}>
+                    <TextField
+                      label="Menge"
+                      value={ing.amount}
+                      onChange={e => {
+                        const newIngredients = [...editedRecipe.ingredients];
+                        newIngredients[index] = { ...ing, amount: e.target.value };
+                        setEditedRecipe({ ...editedRecipe, ingredients: newIngredients });
+                      }}
+                      sx={{ width: 90 }}
+                    />
+                    <TextField
+                      label="Einheit"
+                      value={ing.unit}
+                      onChange={e => {
+                        const newIngredients = [...editedRecipe.ingredients];
+                        newIngredients[index] = { ...ing, unit: e.target.value };
+                        setEditedRecipe({ ...editedRecipe, ingredients: newIngredients });
+                      }}
+                      sx={{ width: 90 }}
+                    />
+                    <TextField
+                      fullWidth
+                      label="Zutat"
+                      value={ing.name}
+                      onChange={e => {
+                        const newIngredients = [...editedRecipe.ingredients];
+                        newIngredients[index] = { ...ing, name: e.target.value };
+                        setEditedRecipe({ ...editedRecipe, ingredients: newIngredients });
+                      }}
+                      sx={{ flex: 1, minWidth: 120 }}
+                    />
+                    <IconButton
+                      onClick={() => {
+                        const newIngredients = editedRecipe.ingredients.filter((_, i) => i !== index);
+                        setEditedRecipe({ ...editedRecipe, ingredients: newIngredients });
+                      }}
+                      color="error"
+                    >
+                      <DeleteIcon />
+                    </IconButton>
+                  </Box>
+                ))}
+                <Button onClick={handleAddIngredient} variant="outlined" sx={{ mt: 1 }}>
+                  Zutat hinzufügen
+                </Button>
+              </>
+            ) : (
+              <ul style={{ margin: 0, paddingLeft: 18 }}>
+                {recipe.ingredients?.map(ing => (
+                  <li key={ing.id} style={{ marginBottom: 4, fontSize: isMobile ? 15 : 16 }}>{ing.amount} {ing.unit} {ing.name}</li>
+                ))}
+              </ul>
+            )}
           </Box>
 
           <Box sx={{ mb: 3 }}>
             <Typography variant="h6" fontWeight={600} sx={{ mb: 1 }}>Zubereitung</Typography>
-            <ol style={{ margin: 0, paddingLeft: 18 }}>
-              {recipe.steps?.sort((a, b) => a.order_index - b.order_index).map(step => (
-                <li key={step.id} style={{ marginBottom: 16, fontSize: isMobile ? 15 : 16 }}>
-                  {step.description}
-                  {step.image_url && (
-                    <Box sx={{ mt: 1 }}>
-                      <img src={step.image_url} alt="Schritt" style={{ maxWidth: 300, borderRadius: 8 }} />
-                    </Box>
-                  )}
-                </li>
-              ))}
-            </ol>
+            {editMode ? (
+              <>
+                {editedRecipe.steps.map((step, index) => (
+                  <Box key={index} sx={{ mb: 3 }}>
+                    <TextField
+                      fullWidth
+                      label={`Schritt ${index + 1}`}
+                      multiline
+                      rows={2}
+                      value={step.description}
+                      onChange={e => {
+                        const newSteps = [...editedRecipe.steps];
+                        newSteps[index] = { ...step, description: e.target.value };
+                        setEditedRecipe({ ...editedRecipe, steps: newSteps });
+                      }}
+                      sx={{ mb: 1 }}
+                    />
+                    <TextField
+                      fullWidth
+                      label="Bild-URL (optional)"
+                      value={step.image_url || ''}
+                      onChange={e => {
+                        const newSteps = [...editedRecipe.steps];
+                        newSteps[index] = { ...step, image_url: e.target.value };
+                        setEditedRecipe({ ...editedRecipe, steps: newSteps });
+                      }}
+                    />
+                    <IconButton
+                      onClick={() => {
+                        const newSteps = editedRecipe.steps.filter((_, i) => i !== index);
+                        setEditedRecipe({ ...editedRecipe, steps: newSteps });
+                      }}
+                      color="error"
+                    >
+                      <DeleteIcon />
+                    </IconButton>
+                  </Box>
+                ))}
+                <Button onClick={handleAddStep} variant="outlined">
+                  Schritt hinzufügen
+                </Button>
+              </>
+            ) : (
+              <ol style={{ margin: 0, paddingLeft: 18 }}>
+                {recipe.steps?.sort((a, b) => a.order_index - b.order_index).map(step => (
+                  <li key={step.id} style={{ marginBottom: 16, fontSize: isMobile ? 15 : 16 }}>
+                    {step.description}
+                    {step.image_url && (
+                      <Box sx={{ mt: 1 }}>
+                        <img src={step.image_url} alt="Schritt" style={{ maxWidth: 300, borderRadius: 8 }} />
+                      </Box>
+                    )}
+                  </li>
+                ))}
+              </ol>
+            )}
           </Box>
 
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mt: 2 }}>
