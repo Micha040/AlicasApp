@@ -45,9 +45,9 @@ export default function RecipeDetail() {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
         const { data: userData } = await supabase
-          .from('profiles')
+          .from('users')
           .select('*')
-          .eq('id', session.user.id)
+          .eq('auth_id', session.user.id)
           .single();
         setCurrentUser(userData);
       }
