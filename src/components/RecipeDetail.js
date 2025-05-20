@@ -75,7 +75,7 @@ export default function RecipeDetail() {
         steps(*),
         recipe_images(*),
         recipe_categories(categories(*)),
-        user:user_id(username, avatar_url)
+        user:user_id (username, avatar_url)
       `)
       .eq('id', id)
       .single();
@@ -220,7 +220,7 @@ export default function RecipeDetail() {
   if (loading) return <Box sx={{ textAlign: 'center', mt: 6 }}><CircularProgress /></Box>;
   if (!recipe) return <Typography>Rezept nicht gefunden.</Typography>;
 
-  const isOwner = recipe.user?.username === currentUser?.username;
+  const isOwner = recipe.user_id === currentUser?.id;
 
   return (
     <Box sx={{ maxWidth: 700, mx: 'auto', mt: 4 }}>
