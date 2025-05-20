@@ -47,6 +47,7 @@ import QuizIcon from '@mui/icons-material/Quiz';
 import CompareIcon from '@mui/icons-material/Compare';
 import ListAltIcon from '@mui/icons-material/ListAlt';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
+import SoupKitchenIcon from '@mui/icons-material/SoupKitchen';
 import { supabase } from './supabaseClient';
 import Register from './components/Register';
 import Login from './components/Login';
@@ -845,7 +846,7 @@ function App() {
                 <Tab icon={<FavoriteIcon />} label="Musik" sx={{ minHeight: 48 }} />
                 <Tab icon={<MessageIcon />} label="Chat" sx={{ minHeight: 48 }} />
                 <Tab icon={<ListAltIcon />} label="Listen" sx={{ minHeight: 48 }} />
-                <Tab icon={<RestaurantIcon />} label="Rezepte" sx={{ minHeight: 48 }} />
+                <Tab icon={<SoupKitchenIcon />} label="Rezepte" sx={{ minHeight: 48 }} />
               </Tabs>
             </AppBar>
             <Box component="main" sx={{ flexGrow: 1 }}>
