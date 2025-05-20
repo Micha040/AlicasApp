@@ -34,6 +34,7 @@ import {
 } from '@mui/icons-material';
 import { supabase } from '../supabaseClient';
 import { useNavigate } from 'react-router-dom';
+import RecipeCommentsDialog from './RecipeCommentsDialog';
 
 export default function RecipesTab({ user }) {
   const [recipes, setRecipes] = useState([]);
@@ -53,6 +54,8 @@ export default function RecipesTab({ user }) {
   const [categories, setCategories] = useState([]);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const navigate = useNavigate();
+  const [commentsDialogOpen, setCommentsDialogOpen] = useState(false);
+  const [selectedRecipeId, setSelectedRecipeId] = useState(null);
 
   useEffect(() => {
     fetchRecipes();
@@ -274,7 +277,7 @@ export default function RecipesTab({ user }) {
                 </Box>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
                   <IconButton
-                    onClick={() => handleLike(recipe.id)}
+                    onClick={e => { e.stopPropagation(); handleLike(recipe.id); }}
                     color="primary"
                   >
                     {recipe.recipe_likes?.some(like => like.user_id === user.id) ? (
@@ -283,7 +286,9 @@ export default function RecipesTab({ user }) {
                       <FavoriteBorderIcon />
                     )}
                   </IconButton>
-                  <IconButton>
+                  <IconButton
+                    onClick={e => { e.stopPropagation(); setSelectedRecipeId(recipe.id); setCommentsDialogOpen(true); }}
+                  >
                     <CommentIcon />
                   </IconButton>
                 </Box>
@@ -461,6 +466,13 @@ export default function RecipesTab({ user }) {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <RecipeCommentsDialog
+        open={commentsDialogOpen}
+        onClose={() => setCommentsDialogOpen(false)}
+        recipeId={selectedRecipeId}
+        user={user}
+      />
 
       <Snackbar
         open={snackbar.open}
