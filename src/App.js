@@ -48,6 +48,7 @@ import CompareIcon from '@mui/icons-material/Compare';
 import ListAltIcon from '@mui/icons-material/ListAlt';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
 import SoupKitchenIcon from '@mui/icons-material/SoupKitchen';
+import InspirationTab from './components/InspirationTab';
 import { supabase } from './supabaseClient';
 import Register from './components/Register';
 import Login from './components/Login';
@@ -847,6 +848,7 @@ function App() {
                 <Tab icon={<MessageIcon />} label="Chat" sx={{ minHeight: 48 }} />
                 <Tab icon={<ListAltIcon />} label="Listen" sx={{ minHeight: 48 }} />
                 <Tab icon={<SoupKitchenIcon />} label="Rezepte" sx={{ minHeight: 48 }} />
+                <Tab icon={<StarIcon />} label="Inspiration" sx={{ minHeight: 48 }} />
               </Tabs>
             </AppBar>
             <Box component="main" sx={{ flexGrow: 1 }}>
@@ -882,6 +884,9 @@ function App() {
                   </TabPanel>
                   <TabPanel value={tabValue} index={5}>
                     <RecipesTab user={user} />
+                  </TabPanel>
+                  <TabPanel value={tabValue} index={6}>
+                    <InspirationTab />
                   </TabPanel>
                 </Paper>
               </Container>
