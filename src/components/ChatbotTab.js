@@ -16,13 +16,17 @@ export default function ChatbotTab({ user }) {
     setInput('');
     setLoading(true);
     try {
-      const res = await fetch('/api/chatbot', {
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${process.env.REACT_APP_GEMINI_API_KEY}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: input, username: user?.username || 'Freund' })
+        body: JSON.stringify({
+          contents: [{
+            parts: [{ text: input }]
+          }]
+        }),
       });
       const data = await res.json();
-      setMessages([...newMessages, { sender: 'bot', text: data.reply }]);
+      setMessages([...newMessages, { sender: 'bot', text: data.candidates[0].content.parts[0].text }]);
     } catch (e) {
       setMessages([...newMessages, { sender: 'bot', text: 'Entschuldigung, es gab ein Problem mit der KI.' }]);
     }
