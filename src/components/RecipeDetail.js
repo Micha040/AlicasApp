@@ -54,7 +54,9 @@ export default function RecipeDetail() {
           </Box>
           <Box sx={{ mb: 2 }}>
             {recipe.recipe_categories?.map(rc => (
-              <Chip key={rc.category.id} label={rc.category.name} sx={{ mr: 1 }} />
+              rc.category
+                ? <Chip key={rc.category.id} label={rc.category.name} sx={{ mr: 1 }} />
+                : null
             ))}
           </Box>
           <Box sx={{ mb: 3 }}>
