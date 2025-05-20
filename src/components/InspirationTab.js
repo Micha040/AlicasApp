@@ -54,6 +54,7 @@ export default function InspirationTab() {
           ])
           .select()
           .single();
+        console.log('Insert result:', saved, saveError);
         setInspiration(saved);
       } catch (e) {
         setError('Fehler beim Laden der Inspiration: ' + e.message);
