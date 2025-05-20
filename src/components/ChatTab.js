@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../supabaseClient';
-import { Box, Typography, TextField, Button, List, ListItem, ListItemText, Alert, Divider, Paper, IconButton, useMediaQuery, CircularProgress, Avatar, Card, CardActionArea, ButtonGroup } from '@mui/material';
+import { Box, Typography, TextField, Button, List, ListItem, ListItemText, Alert, Divider, Paper, IconButton, useMediaQuery, CircularProgress, Avatar, Card, CardActionArea, ButtonGroup, Fab, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ImageIcon from '@mui/icons-material/Image';
+import AddIcon from '@mui/icons-material/Add';
+import Snackbar from '@mui/material/Snackbar';
 
 const PAGE_SIZE = 20;
 
@@ -25,6 +27,11 @@ export default function ChatTab({ user }) {
   const messagesListRef = useRef(null);
   const isMobile = useMediaQuery('(max-width:600px)');
   const [oldestMessageId, setOldestMessageId] = useState(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogUsername, setDialogUsername] = useState('');
+  const [dialogResult, setDialogResult] = useState(null);
+  const [dialogError, setDialogError] = useState('');
+  const [dialogSuccess, setDialogSuccess] = useState('');
 
   // Lade alle Usernamen und Avatare für Mapping
   useEffect(() => {
