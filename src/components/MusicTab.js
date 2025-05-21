@@ -19,9 +19,12 @@ import {
   DialogActions,
   TextField,
   Button,
-  Snackbar
+  Snackbar,
+  IconButton
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
+import OpenInNewIcon from '@mui/icons-material/OpenInNew';
+import Tooltip from '@mui/material/Tooltip';
 
 const SPOTIFY_CLIENT_ID = process.env.REACT_APP_SPOTIFY_CLIENT_ID;
 const SPOTIFY_CLIENT_SECRET = process.env.REACT_APP_SPOTIFY_CLIENT_SECRET;
@@ -57,6 +60,24 @@ async function searchSpotifyTrack(query, token) {
   return null;
 }
 
+// Spotify SVG Icon
+const SpotifyIcon = (props) => (
+  <svg
+    width={28}
+    height={28}
+    viewBox="0 0 168 168"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    {...props}
+  >
+    <circle cx="84" cy="84" r="84" fill="#1ED760" />
+    <path
+      d="M124.1 115.4c-2-3.3-5.9-4.3-9.1-2.3-24.9 15.2-56.4 18.6-93.5 10.1-3.7-.8-7.4 1.5-8.2 5.2-.8 3.7 1.5 7.4 5.2 8.2 40.5 8.9 75.1 5.1 102.2-11.3 3.2-2 4.2-6.1 2.3-9.9zm13.2-25.7c-2.5-4-7.7-5.2-11.7-2.7-28.5 17.5-71.9 22.6-105.6 12.2-4.5-1.3-9.2 1.2-10.5 5.7-1.3 4.5 1.2 9.2 5.7 10.5 37.7 11.2 85.2 5.7 117.2-13.2 4-2.4 5.2-7.7 2.7-11.7zm-1.2-27.2c-32.5-9.6-86.1-10.5-117.2 0-5 1.6-7.7 7-6.1 12 1.6 5 7 7.7 12 6.1 27.7-8.7 77.2-7.9 105.6 0 5 .9 10.1-2.1 11-7.1.9-5-2.1-10.1-7.1-11z"
+      fill="#fff"
+    />
+  </svg>
+);
+
 export default function MusicTab({ user }) {
   const [songs, setSongs] = useState([]);
   const [error, setError] = useState('');
@@ -71,6 +92,7 @@ export default function MusicTab({ user }) {
   const [dialogError, setDialogError] = useState('');
   const [dialogSuccess, setDialogSuccess] = useState('');
   const [dialogLoading, setDialogLoading] = useState(false);
+  const [avatars, setAvatars] = useState({});
 
   useEffect(() => {
     // Lade alle geposteten Songs
@@ -80,6 +102,17 @@ export default function MusicTab({ user }) {
         .select('*')
         .order('created_at', { ascending: false });
       setSongs(data || []);
+      // Lade Avatare für alle Poster
+      const usernames = Array.from(new Set((data || []).map(s => s.posted_by).filter(Boolean)));
+      if (usernames.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('username, avatar_url')
+          .in('username', usernames);
+        const avatarMap = {};
+        profiles?.forEach(p => { avatarMap[p.username] = p.avatar_url; });
+        setAvatars(avatarMap);
+      }
     };
     fetchSongs();
   }, []);
@@ -126,56 +159,70 @@ export default function MusicTab({ user }) {
   };
 
   return (
-    <Box sx={{ textAlign: 'center', mt: 4, mb: 4, position: 'relative', minHeight: '100vh', pb: 8 }}>
+    <Box sx={{ textAlign: 'center', mt: 0, mb: 4, position: 'relative', minHeight: '100vh', pb: 8 }}>
       <Typography variant="h4" component="h1" sx={{ fontWeight: 'bold', mb: 3 }}>Musik</Typography>
       <List>
         {songs.map(song => (
-          <React.Fragment key={song.spotify_id + song.created_at}>
-            <ListItem alignItems="flex-start">
-              <ListItemAvatar>
-                <Avatar src={song.cover_url} alt={song.title} />
-              </ListItemAvatar>
-              <ListItemText
-                primary={song.title + ' – ' + song.artist}
-                secondary={
-                  <>
-                    {song.posted_by && <span>Vorgeschlagen von: {song.posted_by} · </span>}
-                    {song.created_at && new Date(song.created_at).toLocaleString()}
-                  </>
-                }
-              />
-              {song.preview_url && (
-                <Button
-                  variant="contained"
-                  color={previewOpen === song.spotify_id ? 'secondary' : 'primary'}
-                  size="small"
-                  sx={{ ml: 1 }}
-                  onClick={() => setPreviewOpen(previewOpen === song.spotify_id ? null : song.spotify_id)}
-                >
-                  {previewOpen === song.spotify_id ? 'Schließen' : 'Preview'}
-                </Button>
-              )}
-              {song.spotify_id && (
-                <Button
-                  href={`https://open.spotify.com/track/${song.spotify_id}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  variant="outlined"
-                  size="small"
-                  sx={{ ml: 2 }}
-                >
-                  Auf Spotify öffnen
-                </Button>
-              )}
-            </ListItem>
-            {previewOpen === song.spotify_id && song.preview_url && (
-              <Box sx={{ pl: 10, pb: 2 }}>
-                <audio controls autoPlay src={song.preview_url}>
-                  Dein Browser unterstützt kein Audio.
-                </audio>
+          <ListItem alignItems="flex-start" sx={{ mb: 2, borderRadius: 2, boxShadow: 1, bgcolor: '#fff', p: 0 }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', width: '100%', height: '100%' }}>
+              <Box sx={{ display: 'flex', alignItems: 'flex-start', p: 2, pb: 1 }}>
+                <Avatar src={song.cover_url} alt={song.title} sx={{ width: 56, height: 56, mr: 2 }} />
+                <Box sx={{ flex: 1 }}>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 0.5 }}>
+                    {song.title}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {song.artist}
+                  </Typography>
+                </Box>
+                {song.spotify_id && (
+                  <Tooltip title="Auf Spotify öffnen">
+                    <IconButton
+                      href={`https://open.spotify.com/track/${song.spotify_id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      sx={{ ml: 2, alignSelf: 'flex-start', borderRadius: '50%', p: 0.5 }}
+                    >
+                      <img src="/spotify_logo.svg.webp" alt="Spotify" style={{ width: 28, height: 28, display: 'block' }} />
+                    </IconButton>
+                  </Tooltip>
+                )}
               </Box>
-            )}
-          </React.Fragment>
+              {song.preview_url && previewOpen === song.spotify_id && (
+                <Box sx={{ pl: 10, pb: 2 }}>
+                  <audio controls autoPlay src={song.preview_url}>
+                    Dein Browser unterstützt kein Audio.
+                  </audio>
+                </Box>
+              )}
+              <Box sx={{ display: 'flex', alignItems: 'center', pl: 2, pb: 1, pt: 1, mt: 'auto' }}>
+                <Avatar
+                  src={avatars[song.posted_by]}
+                  alt={song.posted_by}
+                  sx={{ width: 28, height: 28, mr: 1 }}
+                >
+                  {(!avatars[song.posted_by] && song.posted_by) ? song.posted_by[0].toUpperCase() : ''}
+                </Avatar>
+                <Typography variant="body2" sx={{ fontWeight: 600, mr: 1 }}>
+                  {song.posted_by || 'Unbekannt'}
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  {song.created_at && new Date(song.created_at).toLocaleString()}
+                </Typography>
+                {song.preview_url && (
+                  <Button
+                    variant="contained"
+                    color={previewOpen === song.spotify_id ? 'secondary' : 'primary'}
+                    size="small"
+                    sx={{ ml: 'auto', mr: 2 }}
+                    onClick={() => setPreviewOpen(previewOpen === song.spotify_id ? null : song.spotify_id)}
+                  >
+                    {previewOpen === song.spotify_id ? 'Schließen' : 'Preview'}
+                  </Button>
+                )}
+              </Box>
+            </Box>
+          </ListItem>
         ))}
       </List>
 

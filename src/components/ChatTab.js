@@ -1,10 +1,19 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../supabaseClient';
-import { Box, Typography, TextField, Button, List, ListItem, ListItemText, Alert, Divider, Paper, IconButton, useMediaQuery, CircularProgress, Avatar, Card, CardActionArea, ButtonGroup, Fab, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
+import { Box, Typography, TextField, Button, List, ListItem, ListItemText, Alert, Divider, Paper, IconButton, useMediaQuery, CircularProgress, Avatar, Card, CardActionArea, ButtonGroup } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ImageIcon from '@mui/icons-material/Image';
+import Fab from '@mui/material/Fab';
 import AddIcon from '@mui/icons-material/Add';
+import Tooltip from '@mui/material/Tooltip';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
 import Snackbar from '@mui/material/Snackbar';
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import DoneIcon from '@mui/icons-material/Done';
+import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
 
 const PAGE_SIZE = 20;
 
@@ -32,6 +41,7 @@ export default function ChatTab({ user }) {
   const [dialogResult, setDialogResult] = useState(null);
   const [dialogError, setDialogError] = useState('');
   const [dialogSuccess, setDialogSuccess] = useState('');
+  const [dialogLoading, setDialogLoading] = useState(false);
 
   // Lade alle Usernamen und Avatare für Mapping
   useEffect(() => {
@@ -91,6 +101,28 @@ export default function ChatTab({ user }) {
     };
   }, [user]);
 
+  // Funktion zum Laden des User-Mappings
+  const fetchUserMap = async (chatsList, requestsList) => {
+    // IDs aus Chats und Requests sammeln
+    const ids = new Set();
+    (chatsList || []).forEach(c => {
+      ids.add(c.user1_id);
+      ids.add(c.user2_id);
+    });
+    (requestsList || []).forEach(r => {
+      ids.add(r.user1_id);
+      ids.add(r.user2_id);
+    });
+    const idArr = Array.from(ids).filter(Boolean);
+    if (idArr.length === 0) return;
+    const { data: users } = await supabase.from('users').select('id,username');
+    const { data: profiles } = await supabase.from('profiles').select('id,avatar_url');
+    const map = {};
+    users?.forEach(u => { map[u.id] = { username: u.username }; });
+    profiles?.forEach(p => { if (map[p.id]) map[p.id].avatar_url = p.avatar_url; });
+    setUserMap(map);
+  };
+
   // Lade alle Chats des Users
   const fetchChats = async () => {
     const { data } = await supabase
@@ -99,6 +131,8 @@ export default function ChatTab({ user }) {
       .or(`user1_id.eq.${user.id},user2_id.eq.${user.id}`)
       .order('created_at', { ascending: false });
     setChats(data || []);
+    // Nach dem Laden UserMap aktualisieren
+    fetchUserMap(data || [], pendingRequests);
   };
   useEffect(() => {
     if (!user) return;
@@ -113,6 +147,8 @@ export default function ChatTab({ user }) {
       .eq('user2_id', user.id)
       .eq('status', 'pending');
     setPendingRequests(data || []);
+    // Nach dem Laden UserMap aktualisieren
+    fetchUserMap(chats, data || []);
   };
   useEffect(() => {
     if (!user) return;
@@ -298,37 +334,116 @@ export default function ChatTab({ user }) {
     display: 'block',
   };
 
+  // Dialog-Logik für neuen Chat
+  const handleDialogSearch = async () => {
+    setDialogError('');
+    setDialogSuccess('');
+    setDialogResult(null);
+    if (!dialogUsername) return;
+    if (dialogUsername === user.username) {
+      setDialogError('Du kannst dich nicht selbst suchen!');
+      return;
+    }
+    setDialogLoading(true);
+    const { data } = await supabase
+      .from('users')
+      .select('*')
+      .eq('username', dialogUsername)
+      .single();
+    if (!data) {
+      setDialogError('Kein User gefunden!');
+    } else {
+      setDialogResult(data);
+    }
+    setDialogLoading(false);
+  };
+
+  const handleDialogRequest = async () => {
+    if (!dialogResult) return;
+    setDialogError('');
+    setDialogSuccess('');
+    // Prüfe, ob bereits ein Chat existiert
+    const { data: existing } = await supabase
+      .from('chats')
+      .select('*')
+      .or(`and(user1_id.eq.${user.id},user2_id.eq.${dialogResult.id}),and(user1_id.eq.${dialogResult.id},user2_id.eq.${user.id})`)
+      .maybeSingle();
+    if (existing) {
+      setDialogError('Es existiert bereits ein Chat oder eine Anfrage!');
+      return;
+    }
+    // Anfrage senden
+    const { error: dbError } = await supabase
+      .from('chats')
+      .insert([{ user1_id: user.id, user2_id: dialogResult.id, status: 'pending' }]);
+    if (dbError) {
+      setDialogError('Fehler beim Senden der Anfrage!');
+    } else {
+      setDialogSuccess('Anfrage gesendet!');
+      setDialogOpen(false);
+      setSuccess('Anfrage gesendet!');
+      setDialogUsername('');
+      setDialogResult(null);
+    }
+  };
+
+  // Nachrichten beim Öffnen des Chats als gelesen markieren
+  useEffect(() => {
+    if (!selectedChat || !user) return;
+    const markAsRead = async () => {
+      const unread = messages.filter(
+        m => m.receiver_id === user.id && !m.is_read
+      ).map(m => m.id);
+      if (unread.length > 0) {
+        await supabase.from('messages').update({ is_read: true }).in('id', unread);
+      }
+    };
+    markAsRead();
+    // eslint-disable-next-line
+  }, [selectedChat, messages, user]);
+
+  // Realtime-Subscription für Änderungen an Nachrichten (is_read)
+  useEffect(() => {
+    if (!selectedChat) return;
+    const channel = supabase.channel('messages-realtime-read')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'messages',
+        filter: `chat_id=eq.${selectedChat.id}`
+      }, payload => {
+        if (payload.eventType === 'UPDATE' || payload.eventType === 'INSERT') {
+          setMessages(msgs => {
+            const idx = msgs.findIndex(m => m.id === payload.new.id);
+            if (idx !== -1) {
+              const newMsgs = [...msgs];
+              newMsgs[idx] = payload.new;
+              return newMsgs;
+            } else {
+              return [...msgs, payload.new];
+            }
+          });
+        }
+      })
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [selectedChat]);
+
+  // Hilfsfunktion: Gibt true zurück, wenn es im Chat ungelesene Nachrichten für den aktuellen User gibt
+  const hasUnread = (chat) => {
+    return messages.some(
+      m => m.chat_id === chat.id && m.receiver_id === user.id && !m.is_read
+    );
+  };
+
   // Mobile: Zeige nur Chat-Liste ODER Chat
   if (isMobile) {
     if (!selectedChat) {
       return (
-        <Box sx={{ p: 2 }}>
+        <Box sx={{ p: 2, position: 'relative', minHeight: '100vh', pb: 8 }}>
           <Typography variant="h5" gutterBottom>Chats</Typography>
-          {/* Chat-Suche und Anfrage */}
-          <Box sx={{ mb: 3 }}>
-            <Typography variant="h6">Neuen Chat starten</Typography>
-            <Box sx={{ display: 'flex', gap: 2, mb: 1 }}>
-              <TextField
-                label="Username suchen"
-                value={searchUsername}
-                onChange={e => setSearchUsername(e.target.value)}
-                fullWidth
-              />
-              <Button variant="contained" color="primary" onClick={handleSearch}>
-                Suchen
-              </Button>
-            </Box>
-            {error && <Alert severity="error" sx={{ mb: 1 }}>{error}</Alert>}
-            {success && <Alert severity="success" sx={{ mb: 1 }}>{success}</Alert>}
-            {searchResult && (
-              <Box sx={{ mb: 1 }}>
-                <Typography>Gefunden: {searchResult.username} ({searchResult.email})</Typography>
-                <Button variant="contained" color="secondary" onClick={handleRequest}>
-                  Chat-Anfrage senden
-                </Button>
-              </Box>
-            )}
-          </Box>
           {/* Offene Anfragen */}
           {pendingRequests.length > 0 && (
             <Box sx={{ mb: 3 }}>
@@ -358,18 +473,74 @@ export default function ChatTab({ user }) {
           <List>
             {chats.filter(c => c.status === 'accepted').map(chat => {
               const partner = getChatPartnerObj(chat);
+              const unread = messages.some(m => m.chat_id === chat.id && m.receiver_id === user.id && !m.is_read);
               return (
-                <Card key={chat.id} sx={{ mb: 2, boxShadow: 2, borderRadius: 2, bgcolor: selectedChat?.id === chat.id ? '#ffe4f3' : '#fff' }}>
+                <Card key={chat.id} sx={{ mb: 2, boxShadow: 2, borderRadius: 2, bgcolor: selectedChat?.id === chat.id ? '#ffe4f3' : '#fff', position: 'relative' }}>
                   <CardActionArea onClick={() => setSelectedChat(chat)}>
                     <Box sx={{ display: 'flex', alignItems: 'center', p: 1 }}>
                       <Avatar src={partner.avatar_url} sx={{ width: 36, height: 36, mr: 2 }} />
                       <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>{partner.username}</Typography>
+                      {unread && <FiberManualRecordIcon sx={{ color: '#ff4081', fontSize: 16, ml: 1 }} />}
                     </Box>
                   </CardActionArea>
                 </Card>
               );
             })}
           </List>
+          <Tooltip title="Neuen Chat starten">
+            <Fab
+              color="primary"
+              aria-label="add"
+              onClick={() => setDialogOpen(true)}
+              sx={{ position: 'fixed', bottom: 16, right: 16, zIndex: 1000 }}
+            >
+              <AddIcon />
+            </Fab>
+          </Tooltip>
+          <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="xs" fullWidth>
+            <DialogTitle>Neuen Chat starten</DialogTitle>
+            <DialogContent>
+              <Box sx={{ mt: 2 }}>
+                <TextField
+                  label="Username suchen"
+                  value={dialogUsername}
+                  onChange={e => setDialogUsername(e.target.value)}
+                  fullWidth
+                  disabled={dialogLoading}
+                  sx={{ mb: 2 }}
+                />
+                <Button variant="contained" color="primary" onClick={handleDialogSearch} disabled={dialogLoading || !dialogUsername} sx={{ mb: 2 }}>
+                  Suchen
+                </Button>
+                {dialogError && <Alert severity="error" sx={{ mb: 2 }}>{dialogError}</Alert>}
+                {dialogSuccess && <Alert severity="success" sx={{ mb: 2 }}>{dialogSuccess}</Alert>}
+                {dialogResult && (
+                  <Box sx={{ mb: 1, display: 'flex', alignItems: 'center' }}>
+                    <Avatar src={dialogResult.avatar_url} alt={dialogResult.username} sx={{ width: 32, height: 32, mr: 1 }}>
+                      {(!dialogResult.avatar_url && dialogResult.username) ? dialogResult.username[0].toUpperCase() : ''}
+                    </Avatar>
+                    <Typography variant="body1" sx={{ fontWeight: 600, mr: 1 }}>{dialogResult.username}</Typography>
+                    <Button variant="contained" color="secondary" onClick={handleDialogRequest}>
+                      Chat-Anfrage senden
+                    </Button>
+                  </Box>
+                )}
+              </Box>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => setDialogOpen(false)}>Abbrechen</Button>
+            </DialogActions>
+          </Dialog>
+          <Snackbar
+            open={!!success}
+            autoHideDuration={4000}
+            onClose={() => setSuccess('')}
+            anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+          >
+            <Alert onClose={() => setSuccess('')} severity="success">
+              {success}
+            </Alert>
+          </Snackbar>
         </Box>
       );
     } else {
@@ -401,10 +572,19 @@ export default function ChatTab({ user }) {
                   )}
                   {messages.map(msg => (
                     <ListItem key={msg.id} sx={{ justifyContent: msg.sender_id === user.id ? 'flex-end' : 'flex-start' }}>
-                      <Paper sx={{ p: 1.5, bgcolor: msg.sender_id === user.id ? '#ff4081' : '#eee', color: msg.sender_id === user.id ? 'white' : 'black', borderRadius: 2, maxWidth: '70%' }}>
+                      <Paper sx={{ p: 1.5, bgcolor: msg.sender_id === user.id ? '#ff4081' : '#eee', color: msg.sender_id === user.id ? 'white' : 'black', borderRadius: 2, maxWidth: '70%', position: 'relative' }}>
                         {msg.image_url && <img src={msg.image_url} alt="Bild" style={chatImageStyle} />}
                         {msg.content && <Typography variant="body2">{msg.content}</Typography>}
-                        <Typography variant="caption" sx={{ opacity: 0.7 }}>{msg.sender_id === user.id ? 'Du' : userMap[msg.sender_id]?.username || `User #${msg.sender_id}`}</Typography>
+                        <Box sx={{ display: 'flex', alignItems: 'center', mt: 0.5 }}>
+                          <Typography variant="caption" sx={{ opacity: 0.7, mr: 1 }}>{msg.sender_id === user.id ? 'Du' : userMap[msg.sender_id]?.username || `User #${msg.sender_id}`}</Typography>
+                          {msg.sender_id === user.id && (
+                            msg.is_read ? (
+                              <VisibilityIcon fontSize="small" sx={{ ml: 0.5, color: 'rgba(255,255,255,0.7)' }} />
+                            ) : (
+                              <DoneIcon fontSize="small" sx={{ ml: 0.5, color: 'rgba(255,255,255,0.7)' }} />
+                            )
+                          )}
+                        </Box>
                       </Paper>
                     </ListItem>
                   ))}
@@ -440,35 +620,10 @@ export default function ChatTab({ user }) {
 
   // Desktop: Chat-Liste links, Chat rechts
   return (
-    <Box sx={{ display: 'flex', height: '70vh', maxWidth: 1000, mx: 'auto', mt: 2, bgcolor: '#fff', borderRadius: 2, boxShadow: 2 }}>
+    <Box sx={{ display: 'flex', height: '70vh', maxWidth: 1000, mx: 'auto', mt: 2, bgcolor: '#fff', borderRadius: 2, boxShadow: 2, position: 'relative', minHeight: '100vh', pb: 8 }}>
       {/* Chat-Liste */}
       <Box sx={{ width: 300, borderRight: '1px solid #eee', p: 2, overflowY: 'auto' }}>
         <Typography variant="h5" gutterBottom>Chats</Typography>
-        {/* Chat-Suche und Anfrage */}
-        <Box sx={{ mb: 3 }}>
-          <Typography variant="h6">Neuen Chat starten</Typography>
-          <Box sx={{ display: 'flex', gap: 2, mb: 1 }}>
-            <TextField
-              label="Username suchen"
-              value={searchUsername}
-              onChange={e => setSearchUsername(e.target.value)}
-              fullWidth
-            />
-            <Button variant="contained" color="primary" onClick={handleSearch}>
-              Suchen
-            </Button>
-          </Box>
-          {error && <Alert severity="error" sx={{ mb: 1 }}>{error}</Alert>}
-          {success && <Alert severity="success" sx={{ mb: 1 }}>{success}</Alert>}
-          {searchResult && (
-            <Box sx={{ mb: 1 }}>
-              <Typography>Gefunden: {searchResult.username} ({searchResult.email})</Typography>
-              <Button variant="contained" color="secondary" onClick={handleRequest}>
-                Chat-Anfrage senden
-              </Button>
-            </Box>
-          )}
-        </Box>
         {/* Offene Anfragen */}
         {pendingRequests.length > 0 && (
           <Box sx={{ mb: 3 }}>
@@ -498,12 +653,14 @@ export default function ChatTab({ user }) {
         <List>
           {chats.filter(c => c.status === 'accepted').map(chat => {
             const partner = getChatPartnerObj(chat);
+            const unread = messages.some(m => m.chat_id === chat.id && m.receiver_id === user.id && !m.is_read);
             return (
-              <Card key={chat.id} sx={{ mb: 2, boxShadow: 2, borderRadius: 2, bgcolor: selectedChat?.id === chat.id ? '#ffe4f3' : '#fff' }}>
+              <Card key={chat.id} sx={{ mb: 2, boxShadow: 2, borderRadius: 2, bgcolor: selectedChat?.id === chat.id ? '#ffe4f3' : '#fff', position: 'relative' }}>
                 <CardActionArea onClick={() => setSelectedChat(chat)}>
                   <Box sx={{ display: 'flex', alignItems: 'center', p: 1 }}>
                     <Avatar src={partner.avatar_url} sx={{ width: 36, height: 36, mr: 2 }} />
                     <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>{partner.username}</Typography>
+                    {unread && <FiberManualRecordIcon sx={{ color: '#ff4081', fontSize: 16, ml: 1 }} />}
                   </Box>
                 </CardActionArea>
               </Card>
@@ -537,10 +694,19 @@ export default function ChatTab({ user }) {
                   )}
                   {messages.map(msg => (
                     <ListItem key={msg.id} sx={{ justifyContent: msg.sender_id === user.id ? 'flex-end' : 'flex-start' }}>
-                      <Paper sx={{ p: 1.5, bgcolor: msg.sender_id === user.id ? '#ff4081' : '#eee', color: msg.sender_id === user.id ? 'white' : 'black', borderRadius: 2, maxWidth: '70%' }}>
+                      <Paper sx={{ p: 1.5, bgcolor: msg.sender_id === user.id ? '#ff4081' : '#eee', color: msg.sender_id === user.id ? 'white' : 'black', borderRadius: 2, maxWidth: '70%', position: 'relative' }}>
                         {msg.image_url && <img src={msg.image_url} alt="Bild" style={chatImageStyle} />}
                         {msg.content && <Typography variant="body2">{msg.content}</Typography>}
-                        <Typography variant="caption" sx={{ opacity: 0.7 }}>{msg.sender_id === user.id ? 'Du' : userMap[msg.sender_id]?.username || `User #${msg.sender_id}`}</Typography>
+                        <Box sx={{ display: 'flex', alignItems: 'center', mt: 0.5 }}>
+                          <Typography variant="caption" sx={{ opacity: 0.7, mr: 1 }}>{msg.sender_id === user.id ? 'Du' : userMap[msg.sender_id]?.username || `User #${msg.sender_id}`}</Typography>
+                          {msg.sender_id === user.id && (
+                            msg.is_read ? (
+                              <VisibilityIcon fontSize="small" sx={{ ml: 0.5, color: 'rgba(255,255,255,0.7)' }} />
+                            ) : (
+                              <DoneIcon fontSize="small" sx={{ ml: 0.5, color: 'rgba(255,255,255,0.7)' }} />
+                            )
+                          )}
+                        </Box>
                       </Paper>
                     </ListItem>
                   ))}
