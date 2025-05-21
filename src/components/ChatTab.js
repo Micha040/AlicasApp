@@ -433,19 +433,48 @@ export default function ChatTab({ user }) {
     );
   };
 
-  // Funktion zum Zählen der ungelesenen Nachrichten pro Chat
-  const countUnreadMessages = (chatId) => {
-    return messages.filter(m => m.chat_id === chatId && m.receiver_id === user.id && !m.is_read).length;
+  // Neue Funktion: Hole ungelesene Nachrichten pro Chat aus Supabase
+  const fetchUnreadCounts = async () => {
+    if (!user) return;
+    const { data, error } = await supabase
+      .from('messages')
+      .select('id, chat_id')
+      .eq('receiver_id', user.id)
+      .eq('is_read', false);
+    if (!error && data) {
+      const counts = {};
+      data.forEach(row => {
+        counts[row.chat_id] = (counts[row.chat_id] || 0) + 1;
+      });
+      setUnreadCounts(counts);
+    }
   };
 
-  // Update unread counts when messages change
+  // Nach jedem Laden der Chats und bei neuen Nachrichten aufrufen
   useEffect(() => {
-    const counts = {};
-    chats.forEach(chat => {
-      counts[chat.id] = countUnreadMessages(chat.id);
-    });
-    setUnreadCounts(counts);
-  }, [messages, chats, user]);
+    fetchUnreadCounts();
+  }, [chats, user]);
+
+  // Realtime-Subscription für neue Nachrichten und Updates (nur für unreadCounts)
+  useEffect(() => {
+    if (!user) return;
+    const channel = supabase.channel('messages-unread-realtime')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'messages',
+        filter: `receiver_id=eq.${user.id}`
+      }, () => {
+        fetchUnreadCounts();
+      })
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
+
+  // Vor dem Rendern der Nachrichten Duplikate filtern (z.B. nach id)
+  const uniqueMessages = Array.from(new Map(messages.map(m => [m.id, m])).values());
 
   // Mobile: Zeige nur Chat-Liste ODER Chat
   if (isMobile) {
@@ -581,8 +610,8 @@ export default function ChatTab({ user }) {
                       <CircularProgress size={20} />
                     </ListItem>
                   )}
-                  {messages.map(msg => (
-                    <ListItem key={msg.id} sx={{ justifyContent: msg.sender_id === user.id ? 'flex-end' : 'flex-start' }}>
+                  {uniqueMessages.map(msg => (
+                    <ListItem key={msg.id + '-' + (msg.created_at || '')} sx={{ justifyContent: msg.sender_id === user.id ? 'flex-end' : 'flex-start' }}>
                       <Paper sx={{ p: 1.5, bgcolor: msg.sender_id === user.id ? '#ff4081' : '#eee', color: msg.sender_id === user.id ? 'white' : 'black', borderRadius: 2, maxWidth: '70%', position: 'relative' }}>
                         {msg.image_url && <img src={msg.image_url} alt="Bild" style={chatImageStyle} />}
                         {msg.content && <Typography variant="body2">{msg.content}</Typography>}
@@ -705,8 +734,8 @@ export default function ChatTab({ user }) {
                       <CircularProgress size={20} />
                     </ListItem>
                   )}
-                  {messages.map(msg => (
-                    <ListItem key={msg.id} sx={{ justifyContent: msg.sender_id === user.id ? 'flex-end' : 'flex-start' }}>
+                  {uniqueMessages.map(msg => (
+                    <ListItem key={msg.id + '-' + (msg.created_at || '')} sx={{ justifyContent: msg.sender_id === user.id ? 'flex-end' : 'flex-start' }}>
                       <Paper sx={{ p: 1.5, bgcolor: msg.sender_id === user.id ? '#ff4081' : '#eee', color: msg.sender_id === user.id ? 'white' : 'black', borderRadius: 2, maxWidth: '70%', position: 'relative' }}>
                         {msg.image_url && <img src={msg.image_url} alt="Bild" style={chatImageStyle} />}
                         {msg.content && <Typography variant="body2">{msg.content}</Typography>}
