@@ -65,6 +65,10 @@ import Datenschutz from './components/Datenschutz';
 import RecipesTab from './components/RecipesTab';
 import RecipeDetail from './components/RecipeDetail';
 import TimeCapsuleTab from './components/TimeCapsuleTab';
+import Select from '@mui/material/Select';
+import MenuItem from '@mui/material/MenuItem';
+import './i18n';
+import { useTranslation } from 'react-i18next';
 
 function HideOnScroll(props) {
   const { children, setAppBarHidden } = props;
@@ -313,6 +317,7 @@ function MemoryGame() {
 }
 
 function GameSelection({ onSelectGame }) {
+  const { t } = useTranslation();
   const games = [
     { id: 'memory', name: 'Memory', icon: <PhotoLibraryIcon />, description: 'Finde die passenden Paare!' },
     { id: 'minesweeper', name: 'Minesweeper', icon: <QuizIcon />, description: 'Finde alle Minen ohne sie zu treffen!' },
@@ -322,7 +327,7 @@ function GameSelection({ onSelectGame }) {
   return (
     <Box sx={{ textAlign: 'center' }}>
       <Typography variant="h4" component="h1" sx={{ fontWeight: 'bold', mb: 3, textAlign: 'center' }}>
-        Wähle dein Spiel
+        {t('WaehleDeinSpiel')}
       </Typography>
       <Grid container spacing={3} sx={{ mt: 2 }}>
         {games.map((game) => (
@@ -361,6 +366,7 @@ function GameSelection({ onSelectGame }) {
 }
 
 function Wordle({ wordleWords }) {
+  const { t } = useTranslation();
   const [targetWord, setTargetWord] = useState('');
   const [guesses, setGuesses] = useState([]);
   const [currentGuess, setCurrentGuess] = useState('');
@@ -433,12 +439,12 @@ function Wordle({ wordleWords }) {
   return (
     <Box sx={{ textAlign: 'center', maxWidth: 500, mx: 'auto' }}>
       <Typography variant="h5" gutterBottom>
-        Wordle
+        {t('Wordle')}
       </Typography>
       
       <Box sx={{ mb: 2 }}>
         <Typography variant="body1" gutterBottom>
-          Rate das Wort in 6 Versuchen
+          {t('WordleDesc')}
         </Typography>
         <Button 
           variant="contained" 
@@ -446,7 +452,7 @@ function Wordle({ wordleWords }) {
           onClick={startNewGame}
           sx={{ mt: 1 }}
         >
-          Neues Spiel
+          {t('NeuesSpiel')}
         </Button>
       </Box>
 
@@ -536,7 +542,7 @@ function Wordle({ wordleWords }) {
           disabled={gameOver || currentGuess.length !== targetWord.length}
           sx={{ mt: 2 }}
         >
-          Überprüfen
+          {t('Ueberpruefen')}
         </Button>
       </Box>
 
@@ -574,7 +580,7 @@ function Wordle({ wordleWords }) {
 
       <Box sx={{ mt: 2 }}>
         <Typography variant="body2" color="text.secondary">
-          Tippe Buchstaben ein und drücke Enter zum Raten
+          {t('WordleHint')}
         </Typography>
       </Box>
     </Box>
@@ -626,6 +632,10 @@ function App() {
   const [showRegister, setShowRegister] = useState(false);
   const [appBarHidden, setAppBarHidden] = useState(false);
   const [profileDialogOpen, setProfileDialogOpen] = useState(false);
+  const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
+  const [themeSetting, setThemeSetting] = useState('system');
+  const [languageSetting, setLanguageSetting] = useState('de');
+  const { t, i18n } = useTranslation();
 
   // Wordle-Wörter aus Supabase laden
   useEffect(() => {
@@ -695,17 +705,17 @@ function App() {
           <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: '#f5f5f5' }}>
             <Box sx={{ width: '100%', maxWidth: 400, p: 2 }}>
               <Typography variant="h3" align="center" gutterBottom sx={{ fontWeight: 700, color: '#ff4081' }}>
-                Willkommen bei Alicas Zeitkapsel
+                {t('Willkommen')}
               </Typography>
               <Typography variant="h6" align="center" gutterBottom>
-                Bitte logge dich ein oder registriere dich, um fortzufahren.
+                {t('LoginText')}
               </Typography>
               {!showRegister ? (
                 <>
                   <Login onLogin={handleLogin} />
                   <Box sx={{ textAlign: 'center', mt: 2 }}>
                     <Button variant="text" onClick={() => setShowRegister(true)}>
-                      Noch keinen Account? Jetzt registrieren
+                      {t('NochKeinAccount')}
                     </Button>
                   </Box>
                 </>
@@ -714,7 +724,7 @@ function App() {
                   <Register onRegister={() => setShowRegister(false)} />
                   <Box sx={{ textAlign: 'center', mt: 2 }}>
                     <Button variant="text" onClick={() => setShowRegister(false)}>
-                      Zurück zum Login
+                      {t('ZurueckZumLogin')}
                     </Button>
                   </Box>
                 </>
@@ -746,12 +756,52 @@ function App() {
                     <Avatar src={user?.avatar_url || "https://i.pravatar.cc/40?img=1"} />
                   </IconButton>
                   <Box sx={{ flex: 1 }} />
-                  <IconButton size="large" edge="end" color="inherit">
+                  <IconButton size="large" edge="end" color="inherit" onClick={() => setSettingsDialogOpen(true)}>
                     <SettingsIcon />
                   </IconButton>
                 </Toolbar>
               </AppBar>
             </HideOnScroll>
+
+            <Dialog open={settingsDialogOpen} onClose={() => setSettingsDialogOpen(false)} maxWidth="xs" fullWidth>
+              <DialogTitle>{t('Einstellungen')}</DialogTitle>
+              <DialogContent>
+                <Box sx={{ mb: 3 }}>
+                  <FormControl component="fieldset" fullWidth>
+                    <FormLabel component="legend">{t('Theme')}</FormLabel>
+                    <RadioGroup
+                      row
+                      value={themeSetting}
+                      onChange={e => setThemeSetting(e.target.value)}
+                      sx={{ mt: 1 }}
+                    >
+                      <FormControlLabel value="light" control={<Radio />} label={t('Hell')} />
+                      <FormControlLabel value="dark" control={<Radio />} label={t('Dunkel')} />
+                      <FormControlLabel value="system" control={<Radio />} label={t('System')} />
+                    </RadioGroup>
+                  </FormControl>
+                </Box>
+                <Box>
+                  <FormControl fullWidth sx={{ mt: 2 }}>
+                    <FormLabel>{t('Sprache')}</FormLabel>
+                    <Select
+                      value={languageSetting}
+                      onChange={e => {
+                        setLanguageSetting(e.target.value);
+                        i18n.changeLanguage(e.target.value);
+                      }}
+                      sx={{ mt: 1 }}
+                    >
+                      <MenuItem value="de">{t('Deutsch')}</MenuItem>
+                      <MenuItem value="en">{t('Englisch')}</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Box>
+              </DialogContent>
+              <DialogActions>
+                <Button onClick={() => setSettingsDialogOpen(false)}>{t('Schließen')}</Button>
+              </DialogActions>
+            </Dialog>
 
             <ProfileDialog
               open={profileDialogOpen}
@@ -779,13 +829,13 @@ function App() {
                 sx={{ borderBottom: 1, borderColor: 'divider', minHeight: 48 }}
                 TabIndicatorProps={{ style: { height: 3, background: '#ff4081' } }}
               >
-                <Tab icon={<AccessTimeIcon />} label="Zeitkapsel" sx={{ minHeight: 48 }} />
-                <Tab icon={<SportsEsportsIcon />} label="Spiele" sx={{ minHeight: 48 }} />
-                <Tab icon={<FavoriteIcon />} label="Musik" sx={{ minHeight: 48 }} />
-                <Tab icon={<MessageIcon />} label="Chat" sx={{ minHeight: 48 }} />
-                <Tab icon={<ListAltIcon />} label="Listen" sx={{ minHeight: 48 }} />
-                <Tab icon={<SoupKitchenIcon />} label="Rezepte" sx={{ minHeight: 48 }} />
-                <Tab icon={<StarIcon />} label="Inspiration" sx={{ minHeight: 48 }} />
+                <Tab icon={<AccessTimeIcon />} label={t('Zeitkapsel')} sx={{ minHeight: 48 }} />
+                <Tab icon={<SportsEsportsIcon />} label={t('Spiele')} sx={{ minHeight: 48 }} />
+                <Tab icon={<FavoriteIcon />} label={t('Musik')} sx={{ minHeight: 48 }} />
+                <Tab icon={<MessageIcon />} label={t('Chat')} sx={{ minHeight: 48 }} />
+                <Tab icon={<ListAltIcon />} label={t('Listen')} sx={{ minHeight: 48 }} />
+                <Tab icon={<SoupKitchenIcon />} label={t('Rezepte')} sx={{ minHeight: 48 }} />
+                <Tab icon={<StarIcon />} label={t('Inspiration')} sx={{ minHeight: 48 }} />
               </Tabs>
             </AppBar>
             <Box component="main" sx={{ flexGrow: 1 }}>

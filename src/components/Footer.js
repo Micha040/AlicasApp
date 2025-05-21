@@ -1,8 +1,10 @@
 import React from 'react';
-import { Box, Container, Typography } from '@mui/material';
+import { Box, Container } from '@mui/material';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 
 export default function Footer() {
+  const { t } = useTranslation();
   return (
     <Box
       component="footer"
@@ -34,7 +36,7 @@ export default function Footer() {
               }
             }}
           >
-            Impressum
+            {t('Impressum')}
           </Link>
           <Link
             to="/datenschutz"
@@ -47,7 +49,7 @@ export default function Footer() {
               }
             }}
           >
-            Datenschutz
+            {t('Datenschutz')}
           </Link>
         </Box>
       </Container>

@@ -37,8 +37,10 @@ import {
 import { supabase } from '../supabaseClient';
 import { useNavigate } from 'react-router-dom';
 import RecipeCommentsDialog from './RecipeCommentsDialog';
+import { useTranslation } from 'react-i18next';
 
 export default function RecipesTab({ user }) {
+  const { t } = useTranslation();
   const [recipes, setRecipes] = useState([]);
   const [filteredRecipes, setFilteredRecipes] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -280,7 +282,7 @@ export default function RecipesTab({ user }) {
     <Box sx={{ position: 'relative', minHeight: '100vh', pb: 8 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h5" component="h2">
-          Rezepte
+          {t('Rezepte')}
         </Typography>
         <Fab
           color="primary"
@@ -295,7 +297,7 @@ export default function RecipesTab({ user }) {
       <Box sx={{ mb: 3, display: 'flex', gap: 2 }}>
         <TextField
           fullWidth
-          placeholder="Rezepte durchsuchen..."
+          placeholder={t('RezepteDurchsuchen')}
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           InputProps={{
@@ -307,13 +309,13 @@ export default function RecipesTab({ user }) {
           }}
         />
         <FormControl sx={{ minWidth: 200 }}>
-          <InputLabel>Kategorie</InputLabel>
+          <InputLabel>{t('Kategorie')}</InputLabel>
           <Select
             value={selectedCategory}
             onChange={(e) => setSelectedCategory(e.target.value)}
-            label="Kategorie"
+            label={t('Kategorie')}
           >
-            <MenuItem value="">Alle</MenuItem>
+            <MenuItem value="">{t('Alle')}</MenuItem>
             {categories.map((category) => (
               <MenuItem key={category.id} value={category.id}>
                 {category.name}
@@ -346,19 +348,20 @@ export default function RecipesTab({ user }) {
                 <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                   <TimerIcon sx={{ mr: 1, fontSize: 20 }} />
                   <Typography variant="body2">
-                    {recipe.preparation_time + recipe.cooking_time} Min.
+                    {recipe.preparation_time + recipe.cooking_time} {t('Min')}
                   </Typography>
                 </Box>
                 <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                   <RestaurantIcon sx={{ mr: 1, fontSize: 20 }} />
                   <Typography variant="body2">
-                    {recipe.servings} Portionen
+                    {recipe.servings} {t('PortionenText')}
                   </Typography>
                 </Box>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
                   <IconButton
                     onClick={e => { e.stopPropagation(); handleLike(recipe.id); }}
                     color="primary"
+                    title={t('RezeptLiken')}
                   >
                     {recipe.recipe_likes?.some(like => like.user_id === user.id) ? (
                       <FavoriteIcon />
@@ -368,6 +371,7 @@ export default function RecipesTab({ user }) {
                   </IconButton>
                   <IconButton
                     onClick={e => { e.stopPropagation(); setSelectedRecipeId(recipe.id); setCommentsDialogOpen(true); }}
+                    title={t('KommentarOeffnen')}
                   >
                     <CommentIcon />
                   </IconButton>
@@ -384,19 +388,19 @@ export default function RecipesTab({ user }) {
         maxWidth="md"
         fullWidth
       >
-        <DialogTitle>Neues Rezept erstellen</DialogTitle>
+        <DialogTitle>{t('NeuesRezeptErstellen')}</DialogTitle>
         <DialogContent>
           <Box sx={{ mt: 2 }}>
             <TextField
               fullWidth
-              label="Titel"
+              label={t('Titel')}
               value={newRecipe.title}
               onChange={(e) => setNewRecipe({ ...newRecipe, title: e.target.value })}
               sx={{ mb: 2 }}
             />
             <TextField
               fullWidth
-              label="Beschreibung"
+              label={t('Beschreibung')}
               multiline
               rows={3}
               value={newRecipe.description}
@@ -407,7 +411,7 @@ export default function RecipesTab({ user }) {
               <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
-                  label="Zubereitungszeit (Minuten)"
+                  label={t('Zubereitungszeit')}
                   type="number"
                   value={newRecipe.preparation_time}
                   onChange={(e) => setNewRecipe({ ...newRecipe, preparation_time: e.target.value })}
@@ -416,7 +420,7 @@ export default function RecipesTab({ user }) {
               <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
-                  label="Kochzeit (Minuten)"
+                  label={t('Kochzeit')}
                   type="number"
                   value={newRecipe.cooking_time}
                   onChange={(e) => setNewRecipe({ ...newRecipe, cooking_time: e.target.value })}
@@ -427,7 +431,7 @@ export default function RecipesTab({ user }) {
               <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
-                  label="Portionen"
+                  label={t('Portionen')}
                   type="number"
                   value={newRecipe.servings}
                   onChange={(e) => setNewRecipe({ ...newRecipe, servings: e.target.value })}
@@ -435,28 +439,29 @@ export default function RecipesTab({ user }) {
               </Grid>
               <Grid item xs={12} sm={6}>
                 <FormControl fullWidth>
-                  <InputLabel>Schwierigkeitsgrad</InputLabel>
+                  <InputLabel>{t('Schwierigkeitsgrad')}</InputLabel>
                   <Select
                     value={newRecipe.difficulty}
                     onChange={(e) => setNewRecipe({ ...newRecipe, difficulty: e.target.value })}
+                    label={t('Schwierigkeitsgrad')}
                   >
-                    <MenuItem value="Einfach">Einfach</MenuItem>
-                    <MenuItem value="Mittel">Mittel</MenuItem>
-                    <MenuItem value="Schwer">Schwer</MenuItem>
+                    <MenuItem value="Einfach">{t('Einfach')}</MenuItem>
+                    <MenuItem value="Mittel">{t('Mittel')}</MenuItem>
+                    <MenuItem value="Schwer">{t('Schwer')}</MenuItem>
                   </Select>
                 </FormControl>
               </Grid>
             </Grid>
 
             <Typography variant="h6" sx={{ mt: 3, mb: 2 }}>
-              Zutaten
+              {t('Zutaten')}
             </Typography>
             {newRecipe.ingredients.map((ingredient, index) => (
               <Grid container spacing={2} key={index} sx={{ mb: 2 }}>
                 <Grid item xs={12} sm={4}>
                   <TextField
                     fullWidth
-                    label="Menge"
+                    label={t('Menge')}
                     value={ingredient.amount}
                     onChange={(e) => handleIngredientChange(index, 'amount', e.target.value)}
                   />
@@ -464,7 +469,7 @@ export default function RecipesTab({ user }) {
                 <Grid item xs={12} sm={3}>
                   <TextField
                     fullWidth
-                    label="Einheit"
+                    label={t('Einheit')}
                     value={ingredient.unit}
                     onChange={(e) => handleIngredientChange(index, 'unit', e.target.value)}
                   />
@@ -472,7 +477,7 @@ export default function RecipesTab({ user }) {
                 <Grid item xs={12} sm={5}>
                   <TextField
                     fullWidth
-                    label="Zutat"
+                    label={t('Zutat')}
                     value={ingredient.name}
                     onChange={(e) => handleIngredientChange(index, 'name', e.target.value)}
                   />
@@ -485,17 +490,17 @@ export default function RecipesTab({ user }) {
               startIcon={<AddIcon />}
               sx={{ mb: 3 }}
             >
-              Zutat hinzufügen
+              {t('ZutatHinzufuegen')}
             </Button>
 
             <Typography variant="h6" sx={{ mt: 3, mb: 2 }}>
-              Zubereitungsschritte
+              {t('Zubereitungsschritte')}
             </Typography>
             {newRecipe.steps.map((step, index) => (
               <Box key={index} sx={{ mb: 2 }}>
                 <TextField
                   fullWidth
-                  label={`Schritt ${index + 1}`}
+                  label={`${t('Schritt')} ${index + 1}`}
                   multiline
                   rows={2}
                   value={step.description}
@@ -504,7 +509,7 @@ export default function RecipesTab({ user }) {
                 />
                 <TextField
                   fullWidth
-                  label="Bild-URL (optional)"
+                  label={t('BildURLOptional')}
                   value={step.image_url}
                   onChange={(e) => handleStepChange(index, 'image_url', e.target.value)}
                 />
@@ -516,12 +521,10 @@ export default function RecipesTab({ user }) {
               startIcon={<AddIcon />}
               sx={{ mb: 3 }}
             >
-              Schritt hinzufügen
+              {t('SchrittHinzufuegen')}
             </Button>
 
-            <Typography variant="h6" sx={{ mt: 3, mb: 2 }}>
-              Kategorien
-            </Typography>
+            <Typography variant="h6" sx={{ mt: 3, mb: 2 }}>{t('Kategorien')}</Typography>
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
               {categories.map((category) => (
                 <Chip
@@ -538,10 +541,10 @@ export default function RecipesTab({ user }) {
               ))}
             </Box>
 
-            <Typography variant="h6" sx={{ mt: 3, mb: 2 }}>Titelbild</Typography>
+            <Typography variant="h6" sx={{ mt: 3, mb: 2 }}>{t('Titelbild')}</Typography>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
               <TextField
-                label="Bild-URL"
+                label={t('BildURL')}
                 value={newRecipe.mainImageUrl}
                 onChange={e => setNewRecipe({ ...newRecipe, mainImageUrl: e.target.value })}
                 fullWidth
@@ -561,14 +564,14 @@ export default function RecipesTab({ user }) {
                 }}
               />
               <label htmlFor="main-image-upload">
-                <Button variant="outlined" component="span">Bild hochladen</Button>
+                <Button variant="outlined" component="span">{t('BildHochladen')}</Button>
               </label>
             </Box>
             {(newRecipe.mainImageFile || newRecipe.mainImageUrl) && (
               <Box sx={{ mb: 2 }}>
                 <img
                   src={newRecipe.mainImageFile || newRecipe.mainImageUrl}
-                  alt="Titelbild Vorschau"
+                  alt={t('TitelbildVorschau')}
                   style={{ maxWidth: 200, borderRadius: 8 }}
                 />
               </Box>
@@ -576,9 +579,9 @@ export default function RecipesTab({ user }) {
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenDialog(false)}>Abbrechen</Button>
+          <Button onClick={() => setOpenDialog(false)}>{t('Abbrechen')}</Button>
           <Button onClick={handleCreateRecipe} variant="contained" color="primary">
-            Rezept erstellen
+            {t('RezeptErstellenBtn')}
           </Button>
         </DialogActions>
       </Dialog>
@@ -599,7 +602,7 @@ export default function RecipesTab({ user }) {
           onClose={() => setSnackbar({ ...snackbar, open: false })}
           severity={snackbar.severity}
         >
-          {snackbar.message}
+          {snackbar.message === 'Rezept erfolgreich erstellt!' ? t('RezeptErfolg') : snackbar.message === 'Fehler beim Erstellen des Rezepts' ? t('FehlerRezept') : snackbar.message}
         </Alert>
       </Snackbar>
     </Box>

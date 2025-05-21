@@ -27,8 +27,10 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { supabase } from '../supabaseClient';
+import { useTranslation } from 'react-i18next';
 
 export default function RecipeDetail() {
+  const { t } = useTranslation();
   const { id } = useParams();
   const navigate = useNavigate();
   const [recipe, setRecipe] = useState(null);
@@ -162,12 +164,12 @@ export default function RecipeDetail() {
         if (categoriesError) throw categoriesError;
       }
 
-      setSuccess('Rezept erfolgreich aktualisiert!');
+      setSuccess(t('RezeptAktualisiert'));
       setEditMode(false);
       fetchRecipe();
     } catch (error) {
       console.error('Error updating recipe:', error);
-      setError('Fehler beim Aktualisieren des Rezepts');
+      setError(t('FehlerAktualisieren'));
     }
   };
 
@@ -194,7 +196,7 @@ export default function RecipeDetail() {
       navigate('/');
     } catch (error) {
       console.error('Error deleting recipe:', error);
-      setError('Fehler beim Löschen des Rezepts');
+      setError(t('FehlerLoeschen'));
     }
   };
 
@@ -213,7 +215,7 @@ export default function RecipeDetail() {
   };
 
   if (loading) return <Box sx={{ textAlign: 'center', mt: 6 }}><CircularProgress /></Box>;
-  if (!recipe) return <Typography>Rezept nicht gefunden.</Typography>;
+  if (!recipe) return <Typography>{t('RezeptNichtGefunden')}</Typography>;
 
   const isOwner = recipe.user_id === user?.id;
 
@@ -224,7 +226,7 @@ export default function RecipeDetail() {
   return (
     <Box sx={{ maxWidth: 700, mx: 'auto', mt: { xs: 2, md: 4 }, px: { xs: 1, sm: 2 } }}>
       <Button startIcon={<ArrowBackIcon />} onClick={() => navigate(-1)} sx={{ mb: 2 }}>
-        Zurück
+        {t('Zurueck')}
       </Button>
       <Card sx={{ borderRadius: 4, boxShadow: 4, p: { xs: 1, sm: 2 }, bgcolor: 'background.paper' }}>
         {recipe.recipe_images?.[0]?.image_url && (
@@ -241,7 +243,7 @@ export default function RecipeDetail() {
             {editMode ? (
               <TextField
                 fullWidth
-                label="Titel"
+                label={t('Titel')}
                 value={editedRecipe.title}
                 onChange={(e) => setEditedRecipe({ ...editedRecipe, title: e.target.value })}
                 sx={{ mb: isMobile ? 2 : 0, fontWeight: 700, fontSize: isMobile ? 22 : 28 }}
@@ -253,10 +255,10 @@ export default function RecipeDetail() {
               isMobile ? (
                 <Box sx={{ width: '100%', display: 'flex', gap: 2, mt: 1 }}>
                   <Button fullWidth variant="contained" color="primary" startIcon={<EditIcon />} onClick={() => setEditMode(true)}>
-                    Bearbeiten
+                    {t('Bearbeiten')}
                   </Button>
                   <Button fullWidth variant="contained" color="error" startIcon={<DeleteIcon />} onClick={() => setDeleteDialogOpen(true)}>
-                    Löschen
+                    {t('Loeschen')}
                   </Button>
                 </Box>
               ) : (
@@ -273,10 +275,10 @@ export default function RecipeDetail() {
             {editMode && (
               <Box sx={{ width: isMobile ? '100%' : 'auto', display: 'flex', gap: 2, mt: isMobile ? 2 : 0 }}>
                 <Button variant="outlined" color="inherit" onClick={() => setEditMode(false)}>
-                  Abbrechen
+                  {t('Abbrechen')}
                 </Button>
                 <Button variant="contained" color="primary" onClick={handleSave}>
-                  Speichern
+                  {t('Speichern')}
                 </Button>
               </Box>
             )}
@@ -285,7 +287,7 @@ export default function RecipeDetail() {
           {editMode ? (
             <TextField
               fullWidth
-              label="Beschreibung"
+              label={t('Beschreibung')}
               multiline
               rows={3}
               value={editedRecipe.description}
@@ -303,7 +305,7 @@ export default function RecipeDetail() {
               <Grid item xs={6} sm={3}>
                 <TextField
                   fullWidth
-                  label="Zubereitung (Min.)"
+                  label={t('ZubereitungMin')}
                   type="number"
                   value={editedRecipe.preparation_time}
                   onChange={e => setEditedRecipe({ ...editedRecipe, preparation_time: e.target.value })}
@@ -312,7 +314,7 @@ export default function RecipeDetail() {
               <Grid item xs={6} sm={3}>
                 <TextField
                   fullWidth
-                  label="Kochzeit (Min.)"
+                  label={t('KochzeitMin')}
                   type="number"
                   value={editedRecipe.cooking_time}
                   onChange={e => setEditedRecipe({ ...editedRecipe, cooking_time: e.target.value })}
@@ -321,7 +323,7 @@ export default function RecipeDetail() {
               <Grid item xs={6} sm={3}>
                 <TextField
                   fullWidth
-                  label="Portionen"
+                  label={t('Portionen')}
                   type="number"
                   value={editedRecipe.servings}
                   onChange={e => setEditedRecipe({ ...editedRecipe, servings: e.target.value })}
@@ -329,31 +331,31 @@ export default function RecipeDetail() {
               </Grid>
               <Grid item xs={6} sm={3}>
                 <FormControl fullWidth>
-                  <InputLabel>Schwierigkeitsgrad</InputLabel>
+                  <InputLabel>{t('Schwierigkeit')}</InputLabel>
                   <Select
                     value={editedRecipe.difficulty}
                     onChange={e => setEditedRecipe({ ...editedRecipe, difficulty: e.target.value })}
-                    label="Schwierigkeitsgrad"
+                    label={t('Schwierigkeit')}
                   >
-                    <MenuItem value="Einfach">Einfach</MenuItem>
-                    <MenuItem value="Mittel">Mittel</MenuItem>
-                    <MenuItem value="Schwer">Schwer</MenuItem>
+                    <MenuItem value="Einfach">{t('Einfach')}</MenuItem>
+                    <MenuItem value="Mittel">{t('Mittel')}</MenuItem>
+                    <MenuItem value="Schwer">{t('Schwer')}</MenuItem>
                   </Select>
                 </FormControl>
               </Grid>
             </Grid>
           ) : (
             <Grid container spacing={2} sx={{ mb: 2 }}>
-              <Grid item xs={6} sm={3}><Typography variant="body2">Zubereitung: <b>{recipe.preparation_time} Min.</b></Typography></Grid>
-              <Grid item xs={6} sm={3}><Typography variant="body2">Kochzeit: <b>{recipe.cooking_time} Min.</b></Typography></Grid>
-              <Grid item xs={6} sm={3}><Typography variant="body2">Portionen: <b>{recipe.servings}</b></Typography></Grid>
-              <Grid item xs={6} sm={3}><Typography variant="body2">Schwierigkeit: <b>{recipe.difficulty}</b></Typography></Grid>
+              <Grid item xs={6} sm={3}><Typography variant="body2">{t('Zubereitung')}: <b>{recipe.preparation_time} {t('Min')}</b></Typography></Grid>
+              <Grid item xs={6} sm={3}><Typography variant="body2">{t('Kochzeit')}: <b>{recipe.cooking_time} {t('Min')}</b></Typography></Grid>
+              <Grid item xs={6} sm={3}><Typography variant="body2">{t('Portionen')}: <b>{recipe.servings}</b></Typography></Grid>
+              <Grid item xs={6} sm={3}><Typography variant="body2">{t('Schwierigkeit')}: <b>{t(recipe.difficulty)}</b></Typography></Grid>
             </Grid>
           )}
 
           {editMode ? (
             <Box sx={{ mb: 2 }}>
-              <Typography variant="h6" fontWeight={600} sx={{ mb: 1 }}>Kategorien</Typography>
+              <Typography variant="h6" fontWeight={600} sx={{ mb: 1 }}>{t('Kategorien')}</Typography>
               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
                 {categories.map((category) => (
                   <Chip
@@ -379,13 +381,13 @@ export default function RecipeDetail() {
           )}
 
           <Box sx={{ mb: 3 }}>
-            <Typography variant="h6" fontWeight={600} sx={{ mb: 1 }}>Zutaten</Typography>
+            <Typography variant="h6" fontWeight={600} sx={{ mb: 1 }}>{t('Zutaten')}</Typography>
             {editMode ? (
               <>
                 {editedRecipe.ingredients.map((ing, index) => (
                   <Box key={index} sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap' }}>
                     <TextField
-                      label="Menge"
+                      label={t('Menge')}
                       value={ing.amount}
                       onChange={e => {
                         const newIngredients = [...editedRecipe.ingredients];
@@ -395,7 +397,7 @@ export default function RecipeDetail() {
                       sx={{ width: 90 }}
                     />
                     <TextField
-                      label="Einheit"
+                      label={t('Einheit')}
                       value={ing.unit}
                       onChange={e => {
                         const newIngredients = [...editedRecipe.ingredients];
@@ -406,7 +408,7 @@ export default function RecipeDetail() {
                     />
                     <TextField
                       fullWidth
-                      label="Zutat"
+                      label={t('Zutat')}
                       value={ing.name}
                       onChange={e => {
                         const newIngredients = [...editedRecipe.ingredients];
@@ -427,7 +429,7 @@ export default function RecipeDetail() {
                   </Box>
                 ))}
                 <Button onClick={handleAddIngredient} variant="outlined" sx={{ mt: 1 }}>
-                  Zutat hinzufügen
+                  {t('ZutatHinzufuegen')}
                 </Button>
               </>
             ) : (
@@ -440,14 +442,14 @@ export default function RecipeDetail() {
           </Box>
 
           <Box sx={{ mb: 3 }}>
-            <Typography variant="h6" fontWeight={600} sx={{ mb: 1 }}>Zubereitung</Typography>
+            <Typography variant="h6" fontWeight={600} sx={{ mb: 1 }}>{t('Zubereitung')}</Typography>
             {editMode ? (
               <>
                 {editedRecipe.steps.map((step, index) => (
                   <Box key={index} sx={{ mb: 3 }}>
                     <TextField
                       fullWidth
-                      label={`Schritt ${index + 1}`}
+                      label={`${t('Schritt')} ${index + 1}`}
                       multiline
                       rows={2}
                       value={step.description}
@@ -460,7 +462,7 @@ export default function RecipeDetail() {
                     />
                     <TextField
                       fullWidth
-                      label="Bild-URL (optional)"
+                      label={t('BildURLOptional')}
                       value={step.image_url || ''}
                       onChange={e => {
                         const newSteps = [...editedRecipe.steps];
@@ -480,7 +482,7 @@ export default function RecipeDetail() {
                   </Box>
                 ))}
                 <Button onClick={handleAddStep} variant="outlined">
-                  Schritt hinzufügen
+                  {t('SchrittHinzufuegen')}
                 </Button>
               </>
             ) : (
@@ -490,7 +492,7 @@ export default function RecipeDetail() {
                     {step.description}
                     {step.image_url && (
                       <Box sx={{ mt: 1 }}>
-                        <img src={step.image_url} alt="Schritt" style={{ maxWidth: 300, borderRadius: 8 }} />
+                        <img src={step.image_url} alt={t('Schritt')} style={{ maxWidth: 300, borderRadius: 8 }} />
                       </Box>
                     )}
                   </li>
@@ -500,9 +502,9 @@ export default function RecipeDetail() {
           </Box>
 
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mt: 2 }}>
-            <Typography variant="body2">Erstellt von: {recipe.user?.username}</Typography>
+            <Typography variant="body2">{t('ErstelltVon')}: {recipe.user?.username}</Typography>
             {recipe.user?.avatar_url && (
-              <img src={recipe.user.avatar_url} alt="Avatar" style={{ width: 32, height: 32, borderRadius: '50%' }} />
+              <img src={recipe.user.avatar_url} alt={t('Avatar')} style={{ width: 32, height: 32, borderRadius: '50%' }} />
             )}
           </Box>
         </CardContent>
@@ -522,16 +524,16 @@ export default function RecipeDetail() {
         open={deleteDialogOpen}
         onClose={() => setDeleteDialogOpen(false)}
       >
-        <DialogTitle>Rezept löschen</DialogTitle>
+        <DialogTitle>{t('RezeptLoeschen')}</DialogTitle>
         <DialogContent>
           <Typography>
-            Möchtest du dieses Rezept wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.
+            {t('RezeptLoeschenBestaetigung')}
           </Typography>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDeleteDialogOpen(false)}>Abbrechen</Button>
+          <Button onClick={() => setDeleteDialogOpen(false)}>{t('Abbrechen')}</Button>
           <Button onClick={handleDelete} color="error" variant="contained">
-            Löschen
+            {t('Loeschen')}
           </Button>
         </DialogActions>
       </Dialog>

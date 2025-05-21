@@ -5,8 +5,10 @@ import {
 } from '@mui/material';
 import AddPhotoAlternateIcon from '@mui/icons-material/AddPhotoAlternate';
 import { supabase } from '../supabaseClient';
+import { useTranslation } from 'react-i18next';
 
 export default function RecipeCommentsDialog({ open, onClose, recipeId, user }) {
+  const { t } = useTranslation();
   const [comments, setComments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [newComment, setNewComment] = useState('');
@@ -59,21 +61,21 @@ export default function RecipeCommentsDialog({ open, onClose, recipeId, user }) 
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle>Kommentare</DialogTitle>
+      <DialogTitle>{t('Kommentare')}</DialogTitle>
       <DialogContent dividers>
         {loading ? (
           <Box sx={{ textAlign: 'center', my: 4 }}><CircularProgress /></Box>
         ) : comments.length === 0 ? (
-          <Typography color="text.secondary">Noch keine Kommentare.</Typography>
+          <Typography color="text.secondary">{t('NochKeineKommentare')}</Typography>
         ) : (
           comments.map((c) => (
             <Box key={c.id} sx={{ mb: 3, display: 'flex', alignItems: 'flex-start', gap: 2 }}>
               <Avatar src={c.user?.avatar_url} alt={c.user?.username} />
               <Box>
-                <Typography variant="subtitle2">{c.user?.username || 'Unbekannt'}</Typography>
+                <Typography variant="subtitle2">{c.user?.username || t('Unbekannt')}</Typography>
                 <Typography variant="body2" sx={{ mb: 1 }}>{c.comment}</Typography>
                 {c.image_url && (
-                  <img src={c.image_url} alt="Kommentarbild" style={{ maxWidth: 200, borderRadius: 8 }} />
+                  <img src={c.image_url} alt={t('KommentarbildAlt')} style={{ maxWidth: 200, borderRadius: 8 }} />
                 )}
                 <Typography variant="caption" color="text.secondary">
                   {new Date(c.created_at).toLocaleString()}
@@ -85,7 +87,7 @@ export default function RecipeCommentsDialog({ open, onClose, recipeId, user }) 
       </DialogContent>
       <DialogActions sx={{ flexDirection: 'column', alignItems: 'stretch', gap: 1, p: 2 }}>
         <TextField
-          label="Kommentar schreiben..."
+          label={t('KommentarSchreiben')}
           fullWidth
           multiline
           minRows={2}
@@ -105,14 +107,14 @@ export default function RecipeCommentsDialog({ open, onClose, recipeId, user }) 
               <AddPhotoAlternateIcon />
             </IconButton>
           </label>
-          {image && <img src={image} alt="Vorschau" style={{ maxWidth: 60, borderRadius: 4 }} />}
+          {image && <img src={image} alt={t('Vorschau')} style={{ maxWidth: 60, borderRadius: 4 }} />}
           <Button
             variant="contained"
             color="primary"
             onClick={handleAddComment}
             disabled={uploading || (!newComment.trim() && !image)}
           >
-            {uploading ? 'Speichern...' : 'Kommentieren'}
+            {uploading ? t('SpeichernLaden') : t('Kommentieren')}
           </Button>
         </Box>
       </DialogActions>

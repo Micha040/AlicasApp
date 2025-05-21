@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../supabaseClient';
 import { Box, Card, CardContent, Typography, CircularProgress, Paper, Divider, Dialog } from '@mui/material';
+import { useTranslation } from 'react-i18next';
 
 const HARVARD_API_KEY = process.env.REACT_APP_HARVARD_API_KEY;
 
 export default function InspirationTab() {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [inspiration, setInspiration] = useState(null);
   const [error, setError] = useState('');
@@ -60,12 +62,12 @@ export default function InspirationTab() {
         console.log('Insert result:', saved, saveError);
         setInspiration(saved);
       } catch (e) {
-        setError('Fehler beim Laden der Inspiration: ' + e.message);
+        setError(t('FehlerLadenInspiration') + ': ' + e.message);
       }
       setLoading(false);
     };
     fetchInspiration();
-  }, []);
+  }, [t]);
 
   if (loading) return <Box sx={{ textAlign: 'center', mt: 6 }}><CircularProgress /></Box>;
   if (error) return <Typography color="error">{error}</Typography>;
@@ -75,20 +77,20 @@ export default function InspirationTab() {
     <Box sx={{ maxWidth: 600, mx: 'auto', mt: 4 }}>
       <Paper elevation={3} sx={{ p: 3, mb: 3, borderRadius: 3 }}>
         <Typography variant="h5" align="center" gutterBottom>
-          🎨 Kunstwerk des Tages
+          🎨 {t('KunstwerkDesTages')}
         </Typography>
         {inspiration.artwork_image && (
           <Box sx={{ textAlign: 'center', mb: 2 }}>
             <img
               src={inspiration.artwork_image}
-              alt={inspiration.artwork_title}
+              alt={inspiration.artwork_title || t('BildAlt')}
               style={{ maxWidth: '100%', borderRadius: 8, maxHeight: 320, cursor: 'pointer' }}
               onClick={() => setOpenImage(true)}
             />
             <Dialog open={openImage} onClose={() => setOpenImage(false)} maxWidth="lg">
               <img
                 src={inspiration.artwork_image}
-                alt={inspiration.artwork_title}
+                alt={inspiration.artwork_title || t('BildAlt')}
                 style={{ maxWidth: '90vw', maxHeight: '90vh', display: 'block', margin: 'auto' }}
               />
             </Dialog>
@@ -101,7 +103,7 @@ export default function InspirationTab() {
       </Paper>
       <Paper elevation={2} sx={{ p: 3, mb: 3, borderRadius: 3, bgcolor: '#f9fbe7' }}>
         <Typography variant="h5" align="center" gutterBottom>
-          💡 Motivation des Tages
+          💡 {t('MotivationDesTages')}
         </Typography>
         <Typography variant="h6" align="center" sx={{ fontStyle: 'italic' }}>
           "{inspiration.quote}"
@@ -112,7 +114,7 @@ export default function InspirationTab() {
       </Paper>
       <Paper elevation={2} sx={{ p: 3, borderRadius: 3, bgcolor: '#e3f2fd' }}>
         <Typography variant="h5" align="center" gutterBottom>
-          🤓 Fun Fact des Tages
+          🤓 {t('FunFactDesTages')}
         </Typography>
         <Typography variant="body1" align="center">
           {inspiration.fun_fact}

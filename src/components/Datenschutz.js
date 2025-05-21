@@ -2,9 +2,11 @@ import React from 'react';
 import { Container, Typography, Paper, Box, Button } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 
 export default function Datenschutz() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   return (
     <Container maxWidth="md" sx={{ py: 4 }}>
@@ -13,7 +15,7 @@ export default function Datenschutz() {
         onClick={() => navigate(-1)}
         sx={{ mb: 3 }}
       >
-        Zurück
+        {t('Zurueck')}
       </Button>
       <Paper 
         sx={{ 
@@ -33,83 +35,75 @@ export default function Datenschutz() {
             fontSize: { xs: '1.75rem', md: '2.125rem' }
           }}
         >
-          Datenschutzerklärung
+          {t('Datenschutzerklaerung')}
         </Typography>
         <Box sx={{ mt: 3 }}>
           <Typography variant="h6" color="primary" gutterBottom>
-            1. Datenschutz auf einen Blick
+            {t('DatenschutzUebersicht')}
           </Typography>
           <Typography variant="h6" color="primary" gutterBottom sx={{ mt: 2, fontSize: '1.1rem' }}>
-            Allgemeine Hinweise
+            {t('AllgemeineHinweise')}
           </Typography>
           <Typography variant="body1" paragraph sx={{ color: 'text.secondary' }}>
-            Die folgenden Hinweise geben einen einfachen Überblick darüber, was mit Ihren personenbezogenen Daten passiert, wenn Sie diese Website besuchen.
+            {t('DatenschutzAllgemeinText')}
           </Typography>
 
           <Typography variant="h6" color="primary" gutterBottom sx={{ mt: 4 }}>
-            2. Datenerfassung auf dieser Website
+            {t('Datenerfassung')}
           </Typography>
           <Typography variant="h6" color="primary" gutterBottom sx={{ mt: 2, fontSize: '1.1rem' }}>
-            Wer ist verantwortlich für die Datenerfassung auf dieser Website?
+            {t('Verantwortlicher')}
           </Typography>
           <Typography variant="body1" paragraph sx={{ color: 'text.secondary' }}>
-            Die Datenverarbeitung auf dieser Website erfolgt durch den Websitebetreiber. Dessen Kontaktdaten können Sie dem Impressum dieser Website entnehmen.
+            {t('VerantwortlicherText')}
           </Typography>
 
           <Typography variant="h6" color="primary" gutterBottom sx={{ mt: 4 }}>
-            3. Welche Daten werden erfasst?
+            {t('WelcheDaten')}
           </Typography>
           <Typography variant="body1" paragraph sx={{ color: 'text.secondary' }}>
-            Auf dieser Website werden folgende personenbezogene Daten erfasst:
+            {t('WelcheDatenText')}
           </Typography>
           <Typography variant="body1" component="ul" sx={{ color: 'text.secondary', pl: 2 }}>
-            <li>E-Mail-Adresse (für Login/Registrierung)</li>
-            <li>Profilbild (optional)</li>
-            <li>Benutzername</li>
-            <li>Zeitkapsel-Einträge (Nachrichten, Bilder, Videos)</li>
-            <li>Chat-Nachrichten</li>
-            <li>Spielstand-Daten</li>
+            {t('WelcheDatenListe').split(';').map((item, idx) => (
+              <li key={idx}>{item.trim()}</li>
+            ))}
           </Typography>
 
           <Typography variant="h6" color="primary" gutterBottom sx={{ mt: 4 }}>
-            4. Wie werden Ihre Daten verarbeitet?
+            {t('Datenverarbeitung')}
           </Typography>
           <Typography variant="body1" paragraph sx={{ color: 'text.secondary' }}>
-            Wir verwenden Supabase als Datenbankdienst. Die Datenschutzerklärung von Supabase finden Sie unter: 
+            {t('DatenverarbeitungText')}{' '}
             <a href="https://supabase.com/privacy" target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'underline' }}>
               https://supabase.com/privacy
             </a>
           </Typography>
 
           <Typography variant="h6" color="primary" gutterBottom sx={{ mt: 4 }}>
-            5. Ihre Rechte
+            {t('Rechte')}
           </Typography>
           <Typography variant="body1" paragraph sx={{ color: 'text.secondary' }}>
-            Sie haben jederzeit das Recht:
+            {t('RechteText')}
           </Typography>
           <Typography variant="body1" component="ul" sx={{ color: 'text.secondary', pl: 2 }}>
-            <li>Auskunft über Ihre gespeicherten Daten zu erhalten</li>
-            <li>Diese berichtigen zu lassen</li>
-            <li>Die Löschung zu verlangen</li>
-            <li>Die Verarbeitung einzuschränken</li>
-            <li>Der Verarbeitung zu widersprechen</li>
-            <li>Ihre Daten in einem strukturierten Format zu erhalten</li>
+            {t('RechteListe').split(';').map((item, idx) => (
+              <li key={idx}>{item.trim()}</li>
+            ))}
           </Typography>
 
           <Typography variant="h6" color="primary" gutterBottom sx={{ mt: 4 }}>
-            6. Speicherdauer
+            {t('Speicherdauer')}
           </Typography>
           <Typography variant="body1" paragraph sx={{ color: 'text.secondary' }}>
-            Ihre Daten werden so lange gespeichert, wie es für die genannten Zwecke erforderlich ist. 
-            Sie können Ihr Konto jederzeit löschen, wodurch alle Ihre personenbezogenen Daten gelöscht werden.
+            {t('SpeicherdauerText')}
           </Typography>
 
           <Typography variant="h6" color="primary" gutterBottom sx={{ mt: 4 }}>
-            7. Cookies
+            {t('Cookies')}
           </Typography>
           <Typography variant="body1" paragraph sx={{ color: 'text.secondary' }}>
-            Diese Website verwendet nur technisch notwendige Cookies für die Funktionalität der Website. 
-            Es werden keine Tracking-Cookies oder Cookies von Drittanbietern verwendet.
+            {t('CookiesText')}
           </Typography>
         </Box>
       </Paper>

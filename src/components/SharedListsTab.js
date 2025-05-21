@@ -21,8 +21,13 @@ import {
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import SettingsIcon from '@mui/icons-material/Settings';
+import Fab from '@mui/material/Fab';
+import AddIcon from '@mui/icons-material/Add';
+import Tooltip from '@mui/material/Tooltip';
+import { useTranslation } from 'react-i18next';
 
 export default function SharedListsTab({ user }) {
+  const { t } = useTranslation();
   const [lists, setLists] = useState([]);
   const [invitations, setInvitations] = useState([]);
   const [openDialog, setOpenDialog] = useState(false);
@@ -289,18 +294,15 @@ export default function SharedListsTab({ user }) {
   const canInvite = isErsteller || (myMembership && myMembership.can_invite);
 
   return (
-    <Box sx={{ textAlign: 'center', mt: 4, mb: 4 }}>
-      <Typography variant="h4" component="h1" sx={{ fontWeight: 'bold', mb: 3 }}>Listen</Typography>
+    <Box sx={{ textAlign: 'center', mt: 0, mb: 4, px: 2, position: 'relative', minHeight: '100vh', pb: 8 }}>
+      <Typography variant="h4" component="h1" sx={{ fontWeight: 'bold', mb: 3, textAlign: 'center' }}>{t('Listen')}</Typography>
       <Box>
-        <Typography variant="h5" gutterBottom>Gemeinsame Listen</Typography>
-        <Button variant="contained" color="primary" onClick={() => setOpenDialog(true)} sx={{ mb: 2 }}>
-          Neue Liste erstellen
-        </Button>
+        <Typography variant="h6" sx={{ textAlign: 'left', mb: 2 }}>{t('DeineListen')}</Typography>
         <Dialog open={openDialog} onClose={() => setOpenDialog(false)}>
-          <DialogTitle>Neue Liste erstellen</DialogTitle>
+          <DialogTitle>{t('NeueListeErstellen')}</DialogTitle>
           <DialogContent>
             <TextField
-              label="Name der Liste"
+              label={t('NameDerListe')}
               value={newListName}
               onChange={e => setNewListName(e.target.value)}
               fullWidth
@@ -308,19 +310,19 @@ export default function SharedListsTab({ user }) {
             />
           </DialogContent>
           <DialogActions>
-            <Button onClick={() => setOpenDialog(false)}>Abbrechen</Button>
-            <Button onClick={handleCreateList} variant="contained">Erstellen</Button>
+            <Button onClick={() => setOpenDialog(false)}>{t('Abbrechen')}</Button>
+            <Button onClick={handleCreateList} variant="contained">{t('Erstellen')}</Button>
           </DialogActions>
         </Dialog>
 
         {/* Einladungen */}
         {invitations.length > 0 && (
           <Box sx={{ mb: 3 }}>
-            <Typography variant="h6">Einladungen</Typography>
+            <Typography variant="h6">{t('Einladungen')}</Typography>
             <List>
               {invitations.map(invite => (
                 <ListItem key={invite.id}>
-                  <ListItemText primary={`Einladung zu: ${invite.shared_lists.name}`} />
+                  <ListItemText primary={`${t('EinladungZu')}: ${invite.shared_lists.name}`} />
                   <Button
                     color="success"
                     variant="contained"
@@ -342,7 +344,7 @@ export default function SharedListsTab({ user }) {
                       setLists(newLists || []);
                     }}
                   >
-                    Annehmen
+                    {t('Annehmen')}
                   </Button>
                   <Button
                     color="error"
@@ -362,7 +364,7 @@ export default function SharedListsTab({ user }) {
                       setInvitations(newInv || []);
                     }}
                   >
-                    Ablehnen
+                    {t('Ablehnen')}
                   </Button>
                 </ListItem>
               ))}
@@ -371,13 +373,11 @@ export default function SharedListsTab({ user }) {
         )}
 
         {/* Listenübersicht */}
-        <Typography variant="h6">Deine Listen</Typography>
         <List sx={{ p: 0 }}>
           {lists.map(list => (
-            <Card key={list.id} sx={{ mb: 2, boxShadow: 2, borderRadius: 2 }}>
+            <Card key={list.id} sx={{ mb: 2, boxShadow: 1, borderRadius: 2, p: 0, bgcolor: '#fff' }}>
               <CardActionArea onClick={() => openListDetail(list)}>
-                <Box sx={{ display: 'flex', alignItems: 'center', p: 1 }}>
-                  {/* Optional: Icon oder Initialen als Avatar */}
+                <Box sx={{ display: 'flex', alignItems: 'center', p: 2 }}>
                   <Box sx={{ width: 36, height: 36, bgcolor: '#e0e0e0', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', mr: 2, fontWeight: 600, fontSize: 18 }}>
                     {list.name?.[0]?.toUpperCase() || '?'}
                   </Box>
@@ -391,7 +391,7 @@ export default function SharedListsTab({ user }) {
         {/* Listen-Detail-Dialog */}
         <Dialog open={!!selectedList} onClose={() => setSelectedList(null)} maxWidth="sm" fullWidth>
           <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span>Liste: {selectedList?.name}</span>
+            <span>{t('Liste')}: {selectedList?.name}</span>
             <IconButton onClick={handleOpenSettings}>
               <SettingsIcon />
             </IconButton>
@@ -399,14 +399,14 @@ export default function SharedListsTab({ user }) {
           <DialogContent>
             <Box sx={{ mb: 2 }}>
               <TextField
-                label="Neuer Punkt"
+                label={t('NeuerPunkt')}
                 value={newItem}
                 onChange={e => setNewItem(e.target.value)}
                 fullWidth
                 onKeyDown={e => { if (e.key === 'Enter') handleAddItem(); }}
               />
               <Button onClick={handleAddItem} variant="contained" sx={{ mt: 1 }}>
-                Hinzufügen
+                {t('Hinzufuegen')}
               </Button>
             </Box>
             <List>
@@ -429,15 +429,15 @@ export default function SharedListsTab({ user }) {
             </List>
           </DialogContent>
           <DialogActions>
-            <Button onClick={() => setSelectedList(null)}>Schließen</Button>
+            <Button onClick={() => setSelectedList(null)}>{t('Schliessen')}</Button>
           </DialogActions>
         </Dialog>
 
         {/* Mitglieder-/Einladen-Dialog */}
         <Dialog open={settingsOpen} onClose={() => setSettingsOpen(false)} maxWidth="xs" fullWidth>
-          <DialogTitle>Mitglieder verwalten</DialogTitle>
+          <DialogTitle>{t('MitgliederVerwalten')}</DialogTitle>
           <DialogContent>
-            <Typography variant="subtitle1" sx={{ mb: 1 }}>Mitglieder:</Typography>
+            <Typography variant="subtitle1" sx={{ mb: 1 }}>{t('Mitglieder')}:</Typography>
             <List>
               {members.map(m => (
                 <ListItem key={m.id}
@@ -453,15 +453,15 @@ export default function SharedListsTab({ user }) {
                     primary={m.users?.username || m.user_id}
                     secondary={
                       m.user_id === selectedList?.creator_id
-                        ? 'Ersteller'
-                        : m.status === 'accepted' ? (m.can_invite ? 'Mitglied (darf einladen)' : 'Mitglied') : m.status
+                        ? t('Ersteller')
+                        : m.status === 'accepted' ? (m.can_invite ? t('MitgliedDarfEinladen') : t('Mitglied')) : m.status
                     }
                   />
                   <Chip
                     label={
                       m.user_id === selectedList?.creator_id
-                        ? 'Ersteller'
-                        : m.status === 'accepted' ? 'Mitglied' : m.status
+                        ? t('Ersteller')
+                        : m.status === 'accepted' ? t('Mitglied') : m.status
                     }
                     color={m.user_id === selectedList?.creator_id ? 'info' : m.status === 'accepted' ? 'success' : 'warning'}
                     size="small"
@@ -473,17 +473,17 @@ export default function SharedListsTab({ user }) {
             {/* Nur anzeigen, wenn canInvite true ist */}
             {canInvite && (
               <Box sx={{ mt: 2 }}>
-                <Typography variant="subtitle2">Neues Mitglied einladen</Typography>
+                <Typography variant="subtitle2">{t('NeuesMitgliedEinladen')}</Typography>
                 <TextField
-                  label="Username"
+                  label={t('Username')}
                   value={inviteUsername}
                   onChange={e => setInviteUsername(e.target.value)}
                   fullWidth
                   sx={{ mt: 1, mb: 1 }}
                 />
-                <Button onClick={handleInvite} variant="contained">Einladen</Button>
-                {inviteError && <Typography color="error" sx={{ mt: 1 }}>{inviteError}</Typography>}
-                {inviteSuccess && <Typography color="success.main" sx={{ mt: 1 }}>{inviteSuccess}</Typography>}
+                <Button onClick={handleInvite} variant="contained">{t('Einladen')}</Button>
+                {inviteError && <Typography color="error" sx={{ mt: 1 }}>{inviteError === 'User nicht gefunden!' ? t('UserNichtGefunden') : inviteError === 'User ist bereits eingeladen oder Mitglied!' ? t('UserBereitsMitglied') : inviteError}</Typography>}
+                {inviteSuccess && <Typography color="success.main" sx={{ mt: 1 }}>{inviteSuccess === 'Einladung verschickt!' ? t('EinladungVerschickt') : inviteSuccess}</Typography>}
               </Box>
             )}
             {/* Liste löschen nur für Ersteller */}
@@ -502,19 +502,19 @@ export default function SharedListsTab({ user }) {
                     setLists(newLists || []);
                   }}
                 >
-                  Liste löschen
+                  {t('ListeLoeschen')}
                 </Button>
               </Box>
             )}
           </DialogContent>
           <DialogActions>
-            <Button onClick={() => setSettingsOpen(false)}>Schließen</Button>
+            <Button onClick={() => setSettingsOpen(false)}>{t('Schliessen')}</Button>
           </DialogActions>
         </Dialog>
 
         {/* Member-Settings-Dialog */}
         <Dialog open={memberSettingsOpen} onClose={() => setMemberSettingsOpen(false)} maxWidth="xs">
-          <DialogTitle>Mitglied verwalten</DialogTitle>
+          <DialogTitle>{t('MitgliedVerwalten')}</DialogTitle>
           <DialogContent>
             <Typography variant="subtitle1" sx={{ mb: 2 }}>{selectedMember?.users?.username || selectedMember?.user_id}</Typography>
             {selectedMember && selectedMember.user_id !== selectedList?.creator_id && (
@@ -524,7 +524,7 @@ export default function SharedListsTab({ user }) {
                   onChange={e => setMemberInviteAllowed(e.target.checked)}
                   color="primary"
                 />
-                <Typography sx={{ ml: 1 }}>Darf Mitglieder einladen</Typography>
+                <Typography sx={{ ml: 1 }}>{t('DarfMitgliederEinladen')}</Typography>
               </Box>
             )}
             {selectedMember && selectedMember.user_id !== selectedList?.creator_id && (
@@ -534,21 +534,31 @@ export default function SharedListsTab({ user }) {
                 onClick={handleRemoveMember}
                 sx={{ mt: 2 }}
               >
-                Mitglied entfernen
+                {t('MitgliedEntfernen')}
               </Button>
             )}
             {selectedMember && selectedMember.user_id === selectedList?.creator_id && (
-              <Typography color="info.main" sx={{ mt: 2 }}>Das ist der Ersteller der Liste.</Typography>
+              <Typography color="info.main" sx={{ mt: 2 }}>{t('DasIstDerErsteller')}</Typography>
             )}
           </DialogContent>
           <DialogActions>
-            <Button onClick={() => setMemberSettingsOpen(false)}>Abbrechen</Button>
+            <Button onClick={() => setMemberSettingsOpen(false)}>{t('Abbrechen')}</Button>
             {selectedMember && selectedMember.user_id !== selectedList?.creator_id && (
-              <Button onClick={handleSaveMemberSettings} variant="contained">Speichern</Button>
+              <Button onClick={handleSaveMemberSettings} variant="contained">{t('Speichern')}</Button>
             )}
           </DialogActions>
         </Dialog>
       </Box>
+      <Tooltip title={t('NeueListeErstellen')}>
+        <Fab
+          color="primary"
+          aria-label="add"
+          onClick={() => setOpenDialog(true)}
+          sx={{ position: 'fixed', bottom: 16, right: 16, zIndex: 1000 }}
+        >
+          <AddIcon />
+        </Fab>
+      </Tooltip>
     </Box>
   );
 } 

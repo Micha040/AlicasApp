@@ -25,6 +25,7 @@ import {
 import AddIcon from '@mui/icons-material/Add';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import Tooltip from '@mui/material/Tooltip';
+import { useTranslation } from 'react-i18next';
 
 const SPOTIFY_CLIENT_ID = process.env.REACT_APP_SPOTIFY_CLIENT_ID;
 const SPOTIFY_CLIENT_SECRET = process.env.REACT_APP_SPOTIFY_CLIENT_SECRET;
@@ -79,6 +80,7 @@ const SpotifyIcon = (props) => (
 );
 
 export default function MusicTab({ user }) {
+  const { t } = useTranslation();
   const [songs, setSongs] = useState([]);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -127,12 +129,12 @@ export default function MusicTab({ user }) {
       const token = await getSpotifyToken();
       const result = await searchSpotifyTrack(query, token);
       if (!result) {
-        setDialogError('Kein Song gefunden!');
+        setDialogError(t('KeinSongGefunden'));
       } else {
         setSearchResult(result);
       }
     } catch (e) {
-      setDialogError('Fehler bei der Spotify-Suche.');
+      setDialogError(t('FehlerSpotifySuche'));
     }
     setDialogLoading(false);
   };
@@ -142,25 +144,25 @@ export default function MusicTab({ user }) {
     setDialogError('');
     setDialogSuccess('');
     const { spotify_id, title, artist, cover_url, preview_url } = searchResult;
-    const posted_by = user?.username || 'Unbekannt';
+    const posted_by = user?.username || t('Unbekannt');
     const { error: dbError } = await supabase
       .from('favorite_songs')
       .insert([{ spotify_id, title, artist, cover_url, posted_by, preview_url }]);
     if (dbError) {
-      setDialogError('Fehler beim Speichern!');
+      setDialogError(t('FehlerSpeichern'));
     } else {
-      setDialogSuccess('Song erfolgreich gepostet!');
+      setDialogSuccess(t('SongErfolgGepostet'));
       setSongs([{ spotify_id, title, artist, cover_url, posted_by, preview_url, created_at: new Date().toISOString() }, ...songs]);
       setSearchResult(null);
       setQuery('');
       setDialogOpen(false);
-      setSuccess('Song erfolgreich gepostet!');
+      setSuccess(t('SongErfolgGepostet'));
     }
   };
 
   return (
     <Box sx={{ textAlign: 'center', mt: 0, mb: 4, position: 'relative', minHeight: '100vh', pb: 8 }}>
-      <Typography variant="h4" component="h1" sx={{ fontWeight: 'bold', mb: 3 }}>Musik</Typography>
+      <Typography variant="h4" component="h1" sx={{ fontWeight: 'bold', mb: 3 }}>{t('Musik')}</Typography>
       <List>
         {songs.map(song => (
           <ListItem alignItems="flex-start" sx={{ mb: 2, borderRadius: 2, boxShadow: 1, bgcolor: '#fff', p: 0 }}>
@@ -176,7 +178,7 @@ export default function MusicTab({ user }) {
                   </Typography>
                 </Box>
                 {song.spotify_id && (
-                  <Tooltip title="Auf Spotify öffnen">
+                  <Tooltip title={t('AufSpotifyOeffnen')}>
                     <IconButton
                       href={`https://open.spotify.com/track/${song.spotify_id}`}
                       target="_blank"
@@ -191,7 +193,7 @@ export default function MusicTab({ user }) {
               {song.preview_url && previewOpen === song.spotify_id && (
                 <Box sx={{ pl: 10, pb: 2 }}>
                   <audio controls autoPlay src={song.preview_url}>
-                    Dein Browser unterstützt kein Audio.
+                    {t('DeinBrowserUnterstuetztKeinAudio')}
                   </audio>
                 </Box>
               )}
@@ -204,7 +206,7 @@ export default function MusicTab({ user }) {
                   {(!avatars[song.posted_by] && song.posted_by) ? song.posted_by[0].toUpperCase() : ''}
                 </Avatar>
                 <Typography variant="body2" sx={{ fontWeight: 600, mr: 1 }}>
-                  {song.posted_by || 'Unbekannt'}
+                  {song.posted_by || t('Unbekannt')}
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
                   {song.created_at && new Date(song.created_at).toLocaleString()}
@@ -217,7 +219,7 @@ export default function MusicTab({ user }) {
                     sx={{ ml: 'auto', mr: 2 }}
                     onClick={() => setPreviewOpen(previewOpen === song.spotify_id ? null : song.spotify_id)}
                   >
-                    {previewOpen === song.spotify_id ? 'Schließen' : 'Preview'}
+                    {previewOpen === song.spotify_id ? t('Schliessen') : t('Preview')}
                   </Button>
                 )}
               </Box>
@@ -236,11 +238,11 @@ export default function MusicTab({ user }) {
       </Fab>
 
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Neuen Song posten</DialogTitle>
+        <DialogTitle>{t('NeuenSongPosten')}</DialogTitle>
         <DialogContent>
           <Box sx={{ mt: 2 }}>
             <TextField
-              label="Spotify-Link oder Songname"
+              label={t('SpotifyLinkOderSongname')}
               value={query}
               onChange={e => setQuery(e.target.value)}
               fullWidth
@@ -248,7 +250,7 @@ export default function MusicTab({ user }) {
               sx={{ mb: 2 }}
             />
             <Button variant="contained" color="primary" onClick={handleSearch} disabled={dialogLoading || !query} sx={{ mb: 2 }}>
-              Suchen
+              {t('Suchen')}
             </Button>
             {dialogError && <Alert severity="error" sx={{ mb: 2 }}>{dialogError}</Alert>}
             {dialogSuccess && <Alert severity="success" sx={{ mb: 2 }}>{dialogSuccess}</Alert>}
@@ -266,11 +268,11 @@ export default function MusicTab({ user }) {
                     <Typography variant="subtitle1" color="text.secondary">{searchResult.artist}</Typography>
                     {searchResult.preview_url && (
                       <audio controls src={searchResult.preview_url} style={{ marginTop: 8 }}>
-                        Dein Browser unterstützt kein Audio.
+                        {t('DeinBrowserUnterstuetztKeinAudio')}
                       </audio>
                     )}
                     <Button variant="contained" color="secondary" sx={{ mt: 1 }} onClick={handlePost}>
-                      Song posten
+                      {t('SongPosten')}
                     </Button>
                   </Box>
                 </CardContent>
@@ -279,7 +281,7 @@ export default function MusicTab({ user }) {
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDialogOpen(false)}>Abbrechen</Button>
+          <Button onClick={() => setDialogOpen(false)}>{t('Abbrechen')}</Button>
         </DialogActions>
       </Dialog>
 

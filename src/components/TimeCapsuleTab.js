@@ -21,8 +21,10 @@ import { motion } from 'framer-motion';
 import AddIcon from '@mui/icons-material/Add';
 import AddPhotoAlternateIcon from '@mui/icons-material/AddPhotoAlternate';
 import { supabase } from '../supabaseClient';
+import { useTranslation } from 'react-i18next';
 
 export default function TimeCapsuleTab() {
+  const { t } = useTranslation();
   // User aus localStorage holen
   const user = React.useMemo(() => {
     const stored = localStorage.getItem('user');
@@ -51,7 +53,7 @@ export default function TimeCapsuleTab() {
       .select('*')
       .order('created_at', { ascending: false });
     if (error) {
-      setError('Fehler beim Laden der Erinnerungen: ' + error.message);
+      setError(t('FehlerLaden') + ': ' + error.message);
     } else {
       setMemories(data);
     }
@@ -60,7 +62,7 @@ export default function TimeCapsuleTab() {
 
   const handleAddMemory = async () => {
     if (!newMemory.content.trim() && !newMemory.image_url) {
-      setSnackbar({ open: true, message: 'Bitte Text und/oder Bild hinzufügen.', severity: 'error' });
+      setSnackbar({ open: true, message: t('BitteTextOderBild'), severity: 'error' });
       return;
     }
     setLoading(true);
@@ -71,14 +73,14 @@ export default function TimeCapsuleTab() {
           content: newMemory.content,
           image_url: newMemory.image_url,
           date: newMemory.date,
-          posted_by: user?.username || 'Unbekannt'
+          posted_by: user?.username || t('Unbekannt')
         }
       ])
       .select();
     if (error) {
       setSnackbar({
         open: true,
-        message: 'Fehler beim Speichern: ' + error.message,
+        message: t('FehlerSpeichern') + ': ' + error.message,
         severity: 'error'
       });
       setLoading(false);
@@ -89,7 +91,7 @@ export default function TimeCapsuleTab() {
     setOpenDialog(false);
     setSnackbar({
       open: true,
-      message: 'Erinnerung erfolgreich gespeichert!',
+      message: t('ErinnerungErfolg'),
       severity: 'success'
     });
     setLoading(false);
@@ -109,7 +111,7 @@ export default function TimeCapsuleTab() {
   return (
     <Box sx={{ position: 'relative', minHeight: '100vh', pb: 8 }}>
       <Typography variant="h4" component="h1" sx={{ fontWeight: 'bold', mb: 3, textAlign: 'center' }}>
-        Zeitkapsel
+        {t('Zeitkapsel')}
       </Typography>
 
       <Grid container spacing={3}>
@@ -127,7 +129,7 @@ export default function TimeCapsuleTab() {
                       {memory.posted_by ? memory.posted_by[0]?.toUpperCase() : '?'}
                     </Avatar>
                     <Typography variant="subtitle2" color="text.secondary">
-                      Gepostet von: {memory.posted_by || 'Unbekannt'}
+                      {t('GepostetVon')}: {memory.posted_by || t('Unbekannt')}
                     </Typography>
                   </Box>
                   {memory.content && (
@@ -137,7 +139,7 @@ export default function TimeCapsuleTab() {
                     <Box sx={{ mb: 2 }}>
                       <img 
                         src={memory.image_url} 
-                        alt="Memory" 
+                        alt={t('MemoryBildAlt')} 
                         style={{ maxWidth: '100%', maxHeight: 300, borderRadius: 8 }} 
                       />
                     </Box>
@@ -167,7 +169,7 @@ export default function TimeCapsuleTab() {
         maxWidth="sm"
         fullWidth
       >
-        <DialogTitle>Neue Erinnerung hinzufügen</DialogTitle>
+        <DialogTitle>{t('NeueErinnerung')}</DialogTitle>
         <DialogContent>
           <Box sx={{ mt: 2 }}>
             <TextField
@@ -175,7 +177,7 @@ export default function TimeCapsuleTab() {
               multiline
               rows={4}
               variant="outlined"
-              placeholder="Schreibe eine Nachricht für die Zukunft..."
+              placeholder={t('NachrichtFuerZukunft')}
               value={newMemory.content}
               onChange={(e) => setNewMemory({ ...newMemory, content: e.target.value })}
               sx={{ mb: 2 }}
@@ -198,7 +200,7 @@ export default function TimeCapsuleTab() {
               <Box sx={{ mb: 2 }}>
                 <img 
                   src={newMemory.image_url} 
-                  alt="Vorschau" 
+                  alt={t('VorschauBildAlt')} 
                   style={{ maxWidth: '100%', maxHeight: 200, borderRadius: 8 }} 
                 />
               </Box>
@@ -206,14 +208,14 @@ export default function TimeCapsuleTab() {
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenDialog(false)}>Abbrechen</Button>
+          <Button onClick={() => setOpenDialog(false)}>{t('Abbrechen')}</Button>
           <Button 
             onClick={handleAddMemory} 
             variant="contained" 
             color="primary"
             disabled={loading || (!newMemory.content.trim() && !newMemory.image_url)}
           >
-            Speichern
+            {t('Speichern')}
           </Button>
         </DialogActions>
       </Dialog>

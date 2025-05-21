@@ -14,10 +14,12 @@ import Snackbar from '@mui/material/Snackbar';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import DoneIcon from '@mui/icons-material/Done';
 import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
+import { useTranslation } from 'react-i18next';
 
 const PAGE_SIZE = 20;
 
 export default function ChatTab({ user }) {
+  const { t } = useTranslation();
   const [chats, setChats] = useState([]);
   const [selectedChat, setSelectedChat] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -480,12 +482,12 @@ export default function ChatTab({ user }) {
   if (isMobile) {
     if (!selectedChat) {
       return (
-        <Box sx={{ p: 2, position: 'relative', minHeight: '100vh', pb: 8 }}>
-          <Typography variant="h5" gutterBottom>Chats</Typography>
+        <Box sx={{ pt: 0, pb: 8, px: 2, position: 'relative', minHeight: '100vh' }}>
+          <Typography variant="h4" component="h1" sx={{ fontWeight: 'bold', mb: 3, textAlign: 'center' }}>{t('Chats')}</Typography>
           {/* Offene Anfragen */}
           {pendingRequests.length > 0 && (
             <Box sx={{ mb: 3 }}>
-              <Typography variant="h6">Offene Chat-Anfragen</Typography>
+              <Typography variant="h6">{t('OffeneChatAnfragen')}</Typography>
               <List>
                 {pendingRequests.map(req => {
                   const partner = getChatPartnerObj(req);
@@ -494,11 +496,11 @@ export default function ChatTab({ user }) {
                       <Avatar src={partner.avatar_url} sx={{ width: 32, height: 32, mr: 1, mt: 0.5 }} />
                       <Box sx={{ flex: 1, minWidth: 0 }}>
                         <Typography>
-                          Von: <b>{partner.username}</b>
+                          {t('Von')} <b>{partner.username}</b>
                         </Typography>
                         <ButtonGroup variant="outlined" sx={{ mt: 0.5 }}>
-                          <Button color="primary" size="small" onClick={() => handleRequestAction(req.id, 'accept')}>Annehmen</Button>
-                          <Button color="secondary" size="small" onClick={() => handleRequestAction(req.id, 'declined')}>Ablehnen</Button>
+                          <Button color="primary" size="small" onClick={() => handleRequestAction(req.id, 'accept')}>{t('Annehmen')}</Button>
+                          <Button color="secondary" size="small" onClick={() => handleRequestAction(req.id, 'declined')}>{t('Ablehnen')}</Button>
                         </ButtonGroup>
                       </Box>
                     </ListItem>
@@ -507,15 +509,15 @@ export default function ChatTab({ user }) {
               </List>
             </Box>
           )}
-          <Typography variant="h6">Deine Chats</Typography>
+          <Typography variant="h6">{t('DeineChats')}</Typography>
           <List>
             {chats.filter(c => c.status === 'accepted').map(chat => {
               const partner = getChatPartnerObj(chat);
               const unread = messages.some(m => m.chat_id === chat.id && m.receiver_id === user.id && !m.is_read);
               return (
-                <Card key={chat.id} sx={{ mb: 2, boxShadow: 2, borderRadius: 2, bgcolor: selectedChat?.id === chat.id ? '#ffe4f3' : '#fff', position: 'relative' }}>
+                <Card key={chat.id} sx={{ mb: 2, borderRadius: 2, boxShadow: 1, bgcolor: '#fff', p: 0 }}>
                   <CardActionArea onClick={() => setSelectedChat(chat)}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', p: 1, justifyContent: 'space-between' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', p: 2, justifyContent: 'space-between' }}>
                       <Box sx={{ display: 'flex', alignItems: 'center' }}>
                         <Avatar src={partner.avatar_url} sx={{ width: 36, height: 36, mr: 2 }} />
                         <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>{partner.username}</Typography>
@@ -527,7 +529,7 @@ export default function ChatTab({ user }) {
               );
             })}
           </List>
-          <Tooltip title="Neuen Chat starten">
+          <Tooltip title={t('NeuenChatStarten')}>
             <Fab
               color="primary"
               aria-label="add"
@@ -538,11 +540,11 @@ export default function ChatTab({ user }) {
             </Fab>
           </Tooltip>
           <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="xs" fullWidth>
-            <DialogTitle>Neuen Chat starten</DialogTitle>
+            <DialogTitle>{t('NeuenChatStarten')}</DialogTitle>
             <DialogContent>
               <Box sx={{ mt: 2 }}>
                 <TextField
-                  label="Username suchen"
+                  label={t('UsernameSuchen')}
                   value={dialogUsername}
                   onChange={e => setDialogUsername(e.target.value)}
                   fullWidth
@@ -550,7 +552,7 @@ export default function ChatTab({ user }) {
                   sx={{ mb: 2 }}
                 />
                 <Button variant="contained" color="primary" onClick={handleDialogSearch} disabled={dialogLoading || !dialogUsername} sx={{ mb: 2 }}>
-                  Suchen
+                  {t('Suchen')}
                 </Button>
                 {dialogError && <Alert severity="error" sx={{ mb: 2 }}>{dialogError}</Alert>}
                 {dialogSuccess && <Alert severity="success" sx={{ mb: 2 }}>{dialogSuccess}</Alert>}
@@ -561,14 +563,14 @@ export default function ChatTab({ user }) {
                     </Avatar>
                     <Typography variant="body1" sx={{ fontWeight: 600, mr: 1 }}>{dialogResult.username}</Typography>
                     <Button variant="contained" color="secondary" onClick={handleDialogRequest}>
-                      Chat-Anfrage senden
+                      {t('ChatAnfrageSenden')}
                     </Button>
                   </Box>
                 )}
               </Box>
             </DialogContent>
             <DialogActions>
-              <Button onClick={() => setDialogOpen(false)}>Abbrechen</Button>
+              <Button onClick={() => setDialogOpen(false)}>{t('Schliessen')}</Button>
             </DialogActions>
           </Dialog>
           <Snackbar
@@ -590,7 +592,7 @@ export default function ChatTab({ user }) {
         <Box sx={{ p: 2, height: '100vh', display: 'flex', flexDirection: 'column' }}>
           <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
             <IconButton onClick={() => setSelectedChat(null)}><ArrowBackIcon /></IconButton>
-            <Typography variant="h6" sx={{ ml: 1 }}>Chat mit {partner.username}</Typography>
+            <Typography variant="h6" sx={{ ml: 1 }}>{t('ChatMit')} {partner.username}</Typography>
           </Box>
           <Divider sx={{ mb: 2 }} />
           {loadingMessages ? (
@@ -616,7 +618,7 @@ export default function ChatTab({ user }) {
                         {msg.image_url && <img src={msg.image_url} alt="Bild" style={chatImageStyle} />}
                         {msg.content && <Typography variant="body2">{msg.content}</Typography>}
                         <Box sx={{ display: 'flex', alignItems: 'center', mt: 0.5 }}>
-                          <Typography variant="caption" sx={{ opacity: 0.7, mr: 1 }}>{msg.sender_id === user.id ? 'Du' : userMap[msg.sender_id]?.username || `User #${msg.sender_id}`}</Typography>
+                          <Typography variant="caption" sx={{ opacity: 0.7, mr: 1 }}>{msg.sender_id === user.id ? t('Du') : userMap[msg.sender_id]?.username || `User #${msg.sender_id}`}</Typography>
                           {msg.sender_id === user.id && (
                             msg.is_read ? (
                               <VisibilityIcon fontSize="small" sx={{ ml: 0.5, color: 'rgba(255,255,255,0.7)' }} />
@@ -640,7 +642,7 @@ export default function ChatTab({ user }) {
                   value={newMessage}
                   onChange={e => setNewMessage(e.target.value)}
                   fullWidth
-                  placeholder="Nachricht schreiben..."
+                  placeholder={t('NachrichtSchreiben')}
                   onKeyDown={e => { if (e.key === 'Enter') handleSend(); }}
                 />
                 <Button onClick={handleSend} variant="contained">Senden</Button>
@@ -648,7 +650,7 @@ export default function ChatTab({ user }) {
               {imageToSend && (
                 <Box sx={{ mt: 1, mb: 1 }}>
                   <img src={imageToSend} alt="Vorschau" style={{ maxWidth: 120, maxHeight: 120, borderRadius: 8 }} />
-                  <Button size="small" onClick={() => setImageToSend(null)}>Entfernen</Button>
+                  <Button size="small" onClick={() => setImageToSend(null)}>{t('Entfernen')}</Button>
                 </Box>
               )}
             </>
@@ -663,11 +665,11 @@ export default function ChatTab({ user }) {
     <Box sx={{ display: 'flex', height: '70vh', maxWidth: 1000, mx: 'auto', mt: 2, bgcolor: '#fff', borderRadius: 2, boxShadow: 2, position: 'relative', minHeight: '100vh', pb: 8 }}>
       {/* Chat-Liste */}
       <Box sx={{ width: 300, borderRight: '1px solid #eee', p: 2, overflowY: 'auto' }}>
-        <Typography variant="h5" gutterBottom>Chats</Typography>
+        <Typography variant="h4" component="h1" sx={{ fontWeight: 'bold', mb: 3, textAlign: 'center' }}>{t('Chats')}</Typography>
         {/* Offene Anfragen */}
         {pendingRequests.length > 0 && (
           <Box sx={{ mb: 3 }}>
-            <Typography variant="h6">Offene Chat-Anfragen</Typography>
+            <Typography variant="h6">{t('OffeneChatAnfragen')}</Typography>
             <List>
               {pendingRequests.map(req => {
                 const partner = getChatPartnerObj(req);
@@ -676,11 +678,11 @@ export default function ChatTab({ user }) {
                     <Avatar src={partner.avatar_url} sx={{ width: 32, height: 32, mr: 1, mt: 0.5 }} />
                     <Box sx={{ flex: 1, minWidth: 0 }}>
                       <Typography>
-                        Von: <b>{partner.username}</b>
+                        {t('Von')} <b>{partner.username}</b>
                       </Typography>
                       <ButtonGroup variant="outlined" sx={{ mt: 0.5 }}>
-                        <Button color="primary" size="small" onClick={() => handleRequestAction(req.id, 'accept')}>Annehmen</Button>
-                        <Button color="secondary" size="small" onClick={() => handleRequestAction(req.id, 'declined')}>Ablehnen</Button>
+                        <Button color="primary" size="small" onClick={() => handleRequestAction(req.id, 'accept')}>{t('Annehmen')}</Button>
+                        <Button color="secondary" size="small" onClick={() => handleRequestAction(req.id, 'declined')}>{t('Ablehnen')}</Button>
                       </ButtonGroup>
                     </Box>
                   </ListItem>
@@ -689,15 +691,15 @@ export default function ChatTab({ user }) {
             </List>
           </Box>
         )}
-        <Typography variant="h6">Deine Chats</Typography>
+        <Typography variant="h6">{t('DeineChats')}</Typography>
         <List>
           {chats.filter(c => c.status === 'accepted').map(chat => {
             const partner = getChatPartnerObj(chat);
             const unread = messages.some(m => m.chat_id === chat.id && m.receiver_id === user.id && !m.is_read);
             return (
-              <Card key={chat.id} sx={{ mb: 2, boxShadow: 2, borderRadius: 2, bgcolor: selectedChat?.id === chat.id ? '#ffe4f3' : '#fff', position: 'relative' }}>
+              <Card key={chat.id} sx={{ mb: 2, borderRadius: 2, boxShadow: 1, bgcolor: '#fff', p: 0 }}>
                 <CardActionArea onClick={() => setSelectedChat(chat)}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', p: 1, justifyContent: 'space-between' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', p: 2, justifyContent: 'space-between' }}>
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
                       <Avatar src={partner.avatar_url} sx={{ width: 36, height: 36, mr: 2 }} />
                       <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>{partner.username}</Typography>
@@ -720,7 +722,7 @@ export default function ChatTab({ user }) {
           ) : (
             <>
               <Typography variant="h6" gutterBottom>
-                Chat mit {getChatPartnerObj(selectedChat).username}
+                {t('ChatMit')} {getChatPartnerObj(selectedChat).username}
               </Typography>
               <Divider sx={{ mb: 2 }} />
               <Box
@@ -740,7 +742,7 @@ export default function ChatTab({ user }) {
                         {msg.image_url && <img src={msg.image_url} alt="Bild" style={chatImageStyle} />}
                         {msg.content && <Typography variant="body2">{msg.content}</Typography>}
                         <Box sx={{ display: 'flex', alignItems: 'center', mt: 0.5 }}>
-                          <Typography variant="caption" sx={{ opacity: 0.7, mr: 1 }}>{msg.sender_id === user.id ? 'Du' : userMap[msg.sender_id]?.username || `User #${msg.sender_id}`}</Typography>
+                          <Typography variant="caption" sx={{ opacity: 0.7, mr: 1 }}>{msg.sender_id === user.id ? t('Du') : userMap[msg.sender_id]?.username || `User #${msg.sender_id}`}</Typography>
                           {msg.sender_id === user.id && (
                             msg.is_read ? (
                               <VisibilityIcon fontSize="small" sx={{ ml: 0.5, color: 'rgba(255,255,255,0.7)' }} />
@@ -764,7 +766,7 @@ export default function ChatTab({ user }) {
                   value={newMessage}
                   onChange={e => setNewMessage(e.target.value)}
                   fullWidth
-                  placeholder="Nachricht schreiben..."
+                  placeholder={t('NachrichtSchreiben')}
                   onKeyDown={e => { if (e.key === 'Enter') handleSend(); }}
                 />
                 <Button onClick={handleSend} variant="contained">Senden</Button>
@@ -772,14 +774,14 @@ export default function ChatTab({ user }) {
               {imageToSend && (
                 <Box sx={{ mt: 1, mb: 1 }}>
                   <img src={imageToSend} alt="Vorschau" style={{ maxWidth: 120, maxHeight: 120, borderRadius: 8 }} />
-                  <Button size="small" onClick={() => setImageToSend(null)}>Entfernen</Button>
+                  <Button size="small" onClick={() => setImageToSend(null)}>{t('Entfernen')}</Button>
                 </Box>
               )}
             </>
           )
         ) : (
           <Box sx={{ textAlign: 'center', color: '#aaa', mt: 10 }}>
-            <Typography>Wähle einen Chat aus oder starte einen neuen!</Typography>
+            <Typography>{t('WaehleChatOderStarteNeuen')}</Typography>
           </Box>
         )}
       </Box>
