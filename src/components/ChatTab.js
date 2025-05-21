@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../supabaseClient';
-import { Box, Typography, TextField, Button, List, ListItem, ListItemText, Alert, Divider, Paper, IconButton, useMediaQuery, CircularProgress, Avatar, Card, CardActionArea, ButtonGroup } from '@mui/material';
+import { Box, Typography, TextField, Button, List, ListItem, ListItemText, Alert, Divider, Paper, IconButton, useMediaQuery, CircularProgress, Avatar, Card, CardActionArea, ButtonGroup, Badge } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ImageIcon from '@mui/icons-material/Image';
 import Fab from '@mui/material/Fab';
@@ -43,6 +43,7 @@ export default function ChatTab({ user }) {
   const [dialogSuccess, setDialogSuccess] = useState('');
   const [dialogLoading, setDialogLoading] = useState(false);
   const [lastMarkedRead, setLastMarkedRead] = useState([]);
+  const [unreadCounts, setUnreadCounts] = useState({});
 
   // Lade alle Usernamen und Avatare für Mapping
   useEffect(() => {
@@ -432,6 +433,20 @@ export default function ChatTab({ user }) {
     );
   };
 
+  // Funktion zum Zählen der ungelesenen Nachrichten pro Chat
+  const countUnreadMessages = (chatId) => {
+    return messages.filter(m => m.chat_id === chatId && m.receiver_id === user.id && !m.is_read).length;
+  };
+
+  // Update unread counts when messages change
+  useEffect(() => {
+    const counts = {};
+    chats.forEach(chat => {
+      counts[chat.id] = countUnreadMessages(chat.id);
+    });
+    setUnreadCounts(counts);
+  }, [messages, chats, user]);
+
   // Mobile: Zeige nur Chat-Liste ODER Chat
   if (isMobile) {
     if (!selectedChat) {
@@ -471,10 +486,12 @@ export default function ChatTab({ user }) {
               return (
                 <Card key={chat.id} sx={{ mb: 2, boxShadow: 2, borderRadius: 2, bgcolor: selectedChat?.id === chat.id ? '#ffe4f3' : '#fff', position: 'relative' }}>
                   <CardActionArea onClick={() => setSelectedChat(chat)}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', p: 1 }}>
-                      <Avatar src={partner.avatar_url} sx={{ width: 36, height: 36, mr: 2 }} />
-                      <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>{partner.username}</Typography>
-                      {unread && <FiberManualRecordIcon sx={{ color: '#ff4081', fontSize: 16, ml: 1 }} />}
+                    <Box sx={{ display: 'flex', alignItems: 'center', p: 1, justifyContent: 'space-between' }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        <Avatar src={partner.avatar_url} sx={{ width: 36, height: 36, mr: 2 }} />
+                        <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>{partner.username}</Typography>
+                      </Box>
+                      <Badge badgeContent={unreadCounts[chat.id] || 0} color="error" showZero sx={{ mr: 1.5 }} />
                     </Box>
                   </CardActionArea>
                 </Card>
@@ -651,10 +668,12 @@ export default function ChatTab({ user }) {
             return (
               <Card key={chat.id} sx={{ mb: 2, boxShadow: 2, borderRadius: 2, bgcolor: selectedChat?.id === chat.id ? '#ffe4f3' : '#fff', position: 'relative' }}>
                 <CardActionArea onClick={() => setSelectedChat(chat)}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', p: 1 }}>
-                    <Avatar src={partner.avatar_url} sx={{ width: 36, height: 36, mr: 2 }} />
-                    <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>{partner.username}</Typography>
-                    {unread && <FiberManualRecordIcon sx={{ color: '#ff4081', fontSize: 16, ml: 1 }} />}
+                  <Box sx={{ display: 'flex', alignItems: 'center', p: 1, justifyContent: 'space-between' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                      <Avatar src={partner.avatar_url} sx={{ width: 36, height: 36, mr: 2 }} />
+                      <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>{partner.username}</Typography>
+                    </Box>
+                    <Badge badgeContent={unreadCounts[chat.id] || 0} color="error" showZero sx={{ mr: 1.5 }} />
                   </Box>
                 </CardActionArea>
               </Card>
