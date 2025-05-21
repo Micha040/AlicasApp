@@ -25,7 +25,8 @@ import {
   AppBar,
   Toolbar,
   useScrollTrigger,
-  Slide
+  Slide,
+  Switch
 } from '@mui/material';
 import { motion } from 'framer-motion';
 import SettingsIcon from '@mui/icons-material/Settings';
@@ -635,7 +636,82 @@ function App() {
   const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
   const [themeSetting, setThemeSetting] = useState('system');
   const [languageSetting, setLanguageSetting] = useState('de');
+  const [pushEnabled, setPushEnabled] = useState(false);
   const { t, i18n } = useTranslation();
+
+  // Prüfe Push-Support und Subscription-Status
+  useEffect(() => {
+    const checkPushSupport = async () => {
+      if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+        console.log('Push notifications are not supported');
+        return;
+      }
+
+      try {
+        const registration = await navigator.serviceWorker.ready;
+        const subscription = await registration.pushManager.getSubscription();
+        setPushEnabled(!!subscription);
+      } catch (error) {
+        console.error('Error checking push subscription:', error);
+      }
+    };
+
+    checkPushSupport();
+  }, []);
+
+  // Push-Subscription aktivieren/deaktivieren
+  const handlePushToggle = async () => {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+      alert(t('PushBenachrichtigungenNichtUnterstuetzt'));
+      return;
+    }
+
+    try {
+      const registration = await navigator.serviceWorker.ready;
+      
+      if (!pushEnabled) {
+        // Push-Subscription aktivieren
+        const subscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: process.env.REACT_APP_VAPID_PUBLIC_KEY
+        });
+
+        // Subscription in Supabase speichern
+        const { error } = await supabase
+          .from('push_subscriptions')
+          .upsert({
+            user_id: user.id,
+            endpoint: subscription.endpoint,
+            p256dh: btoa(String.fromCharCode.apply(null, new Uint8Array(subscription.getKey('p256dh')))),
+            auth: btoa(String.fromCharCode.apply(null, new Uint8Array(subscription.getKey('auth')))),
+            created_at: new Date().toISOString()
+          });
+
+        if (error) throw error;
+        setPushEnabled(true);
+        alert(t('PushBenachrichtigungenAktiviert'));
+      } else {
+        // Push-Subscription deaktivieren
+        const subscription = await registration.pushManager.getSubscription();
+        if (subscription) {
+          await subscription.unsubscribe();
+          
+          // Subscription aus Supabase entfernen
+          const { error } = await supabase
+            .from('push_subscriptions')
+            .delete()
+            .eq('user_id', user.id);
+
+          if (error) throw error;
+          setPushEnabled(false);
+          alert(t('PushBenachrichtigungenDeaktiviert'));
+        }
+      }
+    } catch (error) {
+      console.error('Error toggling push subscription:', error);
+      alert('Fehler beim Aktivieren/Deaktivieren der Push-Benachrichtigungen');
+    }
+  };
 
   // Wordle-Wörter aus Supabase laden
   useEffect(() => {
@@ -763,7 +839,7 @@ function App() {
               </AppBar>
             </HideOnScroll>
 
-            <Dialog open={settingsDialogOpen} onClose={() => setSettingsDialogOpen(false)} maxWidth="xs" fullWidth>
+            <Dialog open={settingsDialogOpen} onClose={() => setSettingsDialogOpen(false)} maxWidth="sm" fullWidth>
               <DialogTitle>{t('Einstellungen')}</DialogTitle>
               <DialogContent>
                 <Box sx={{ mb: 3 }}>
@@ -781,8 +857,8 @@ function App() {
                     </RadioGroup>
                   </FormControl>
                 </Box>
-                <Box>
-                  <FormControl fullWidth sx={{ mt: 2 }}>
+                <Box sx={{ mb: 3 }}>
+                  <FormControl fullWidth>
                     <FormLabel>{t('Sprache')}</FormLabel>
                     <Select
                       value={languageSetting}
@@ -795,6 +871,21 @@ function App() {
                       <MenuItem value="de">{t('Deutsch')}</MenuItem>
                       <MenuItem value="en">{t('Englisch')}</MenuItem>
                     </Select>
+                  </FormControl>
+                </Box>
+                <Box>
+                  <FormControl fullWidth>
+                    <FormLabel>{t('PushBenachrichtigungen')}</FormLabel>
+                    <Box sx={{ mt: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Switch
+                        checked={pushEnabled}
+                        onChange={handlePushToggle}
+                        color="primary"
+                      />
+                      <Typography variant="body2" color="text.secondary">
+                        {t('PushBenachrichtigungenInfo')}
+                      </Typography>
+                    </Box>
                   </FormControl>
                 </Box>
               </DialogContent>
