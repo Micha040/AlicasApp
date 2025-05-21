@@ -295,8 +295,16 @@ export default function ChatTab({ user }) {
       // Bild als Base64 in Supabase speichern (alternativ: Storage nutzen)
       image_url = imageToSend;
     }
+    // Chatpartner-ID ermitteln
+    const partnerId = selectedChat.user1_id === user.id ? selectedChat.user2_id : selectedChat.user1_id;
     await supabase.from('messages').insert([
-      { chat_id: selectedChat.id, sender_id: user.id, content: newMessage, image_url }
+      {
+        chat_id: selectedChat.id,
+        sender_id: user.id,
+        receiver_id: partnerId,
+        content: newMessage,
+        image_url
+      }
     ]);
     setNewMessage('');
     setImageToSend(null);
