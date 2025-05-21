@@ -19,6 +19,30 @@ import { sendPushNotification } from '../utils/pushNotifications';
 
 const PAGE_SIZE = 20;
 
+// Hilfsfunktion zum Verkleinern/Komprimieren von Bildern
+function resizeImage(file, maxWidth = 800, maxHeight = 800) {
+  return new Promise(resolve => {
+    const img = new window.Image();
+    img.onload = () => {
+      let { width, height } = img;
+      if (width > maxWidth || height > maxHeight) {
+        const scale = Math.min(maxWidth / width, maxHeight / height);
+        width = width * scale;
+        height = height * scale;
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, width, height);
+      resolve(canvas.toDataURL('image/jpeg', 0.8));
+    };
+    const reader = new FileReader();
+    reader.onload = e => { img.src = e.target.result; };
+    reader.readAsDataURL(file);
+  });
+}
+
 export default function ChatTab({ user }) {
   const { t } = useTranslation();
   const [chats, setChats] = useState([]);
@@ -336,14 +360,12 @@ export default function ChatTab({ user }) {
   };
 
   // Bild auswählen
-  const handleImageChange = (e) => {
+  const handleImageChange = async (e) => {
     const file = e.target.files[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImageToSend(reader.result);
-      };
-      reader.readAsDataURL(file);
+      // Komprimiere das Bild vor dem Senden
+      const resizedDataUrl = await resizeImage(file);
+      setImageToSend(resizedDataUrl);
     }
   };
 
@@ -629,7 +651,11 @@ export default function ChatTab({ user }) {
                   {uniqueMessages.map(msg => (
                     <ListItem key={msg.id + '-' + (msg.created_at || '')} sx={{ justifyContent: msg.sender_id === user.id ? 'flex-end' : 'flex-start' }}>
                       <Paper sx={{ p: 1.5, bgcolor: msg.sender_id === user.id ? '#ff4081' : '#eee', color: msg.sender_id === user.id ? 'white' : 'black', borderRadius: 2, maxWidth: '70%', position: 'relative' }}>
-                        {msg.image_url && <img src={msg.image_url} alt="Bild" style={chatImageStyle} />}
+                        {msg.image_url && (
+                          <Box sx={{ position: 'relative', minHeight: 100 }}>
+                            <ChatImageWithLoader src={msg.image_url} alt="Bild" style={chatImageStyle} />
+                          </Box>
+                        )}
                         {msg.content && <Typography variant="body2">{msg.content}</Typography>}
                         <Box sx={{ display: 'flex', alignItems: 'center', mt: 0.5 }}>
                           <Typography variant="caption" sx={{ opacity: 0.7, mr: 1 }}>{msg.sender_id === user.id ? t('Du') : userMap[msg.sender_id]?.username || `User #${msg.sender_id}`}</Typography>
@@ -753,7 +779,11 @@ export default function ChatTab({ user }) {
                   {uniqueMessages.map(msg => (
                     <ListItem key={msg.id + '-' + (msg.created_at || '')} sx={{ justifyContent: msg.sender_id === user.id ? 'flex-end' : 'flex-start' }}>
                       <Paper sx={{ p: 1.5, bgcolor: msg.sender_id === user.id ? '#ff4081' : '#eee', color: msg.sender_id === user.id ? 'white' : 'black', borderRadius: 2, maxWidth: '70%', position: 'relative' }}>
-                        {msg.image_url && <img src={msg.image_url} alt="Bild" style={chatImageStyle} />}
+                        {msg.image_url && (
+                          <Box sx={{ position: 'relative', minHeight: 100 }}>
+                            <ChatImageWithLoader src={msg.image_url} alt="Bild" style={chatImageStyle} />
+                          </Box>
+                        )}
                         {msg.content && <Typography variant="body2">{msg.content}</Typography>}
                         <Box sx={{ display: 'flex', alignItems: 'center', mt: 0.5 }}>
                           <Typography variant="caption" sx={{ opacity: 0.7, mr: 1 }}>{msg.sender_id === user.id ? t('Du') : userMap[msg.sender_id]?.username || `User #${msg.sender_id}`}</Typography>
@@ -799,6 +829,23 @@ export default function ChatTab({ user }) {
           </Box>
         )}
       </Box>
+    </Box>
+  );
+}
+
+// Komponente für Bild mit Ladeindikator
+function ChatImageWithLoader({ src, alt, style }) {
+  const [imgLoaded, setImgLoaded] = useState(false);
+  return (
+    <Box sx={{ position: 'relative', minHeight: 100 }}>
+      {!imgLoaded && <CircularProgress sx={{ position: 'absolute', top: '40%', left: '45%' }} />}
+      <img
+        src={src}
+        alt={alt}
+        style={{ ...style, display: imgLoaded ? 'block' : 'none' }}
+        onLoad={() => setImgLoaded(true)}
+        onError={() => setImgLoaded(true)}
+      />
     </Box>
   );
 } 
