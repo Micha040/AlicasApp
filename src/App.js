@@ -71,6 +71,20 @@ import MenuItem from '@mui/material/MenuItem';
 import './i18n';
 import { useTranslation } from 'react-i18next';
 
+// Hilfsfunktion für VAPID-Key-Umwandlung
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding)
+    .replace(/-/g, '+')
+    .replace(/_/g, '/');
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
 function HideOnScroll(props) {
   const { children, setAppBarHidden } = props;
   const trigger = useScrollTrigger({ threshold: 80 });
@@ -641,74 +655,85 @@ function App() {
 
   // Prüfe Push-Support und Subscription-Status
   useEffect(() => {
+    console.log('[Push-DEBUG] Prüfe Push-Support...');
     const checkPushSupport = async () => {
       if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-        console.log('Push notifications are not supported');
+        console.log('[Push-DEBUG] Push notifications are not supported');
         return;
       }
-
       try {
         const registration = await navigator.serviceWorker.ready;
         const subscription = await registration.pushManager.getSubscription();
+        console.log('[Push-DEBUG] Service Worker registration:', registration);
+        console.log('[Push-DEBUG] Aktuelle Push-Subscription:', subscription);
         setPushEnabled(!!subscription);
       } catch (error) {
-        console.error('Error checking push subscription:', error);
+        console.error('[Push-DEBUG] Error checking push subscription:', error);
       }
     };
-
     checkPushSupport();
-  }, []);
+    console.log('[Push-DEBUG] User aus localStorage:', user);
+  }, [user]);
 
   // Push-Subscription aktivieren/deaktivieren
   const handlePushToggle = async () => {
+    console.log('[Push-DEBUG] handlePushToggle aufgerufen');
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+      console.log('[Push-DEBUG] Push-API nicht unterstützt');
       alert(t('PushBenachrichtigungenNichtUnterstuetzt'));
       return;
     }
-
+    console.log('[Push-DEBUG] Nach Push-API-Check, pushEnabled:', pushEnabled);
     try {
       const registration = await navigator.serviceWorker.ready;
-      
+      console.log('[Push-DEBUG] Service Worker ready:', registration);
       if (!pushEnabled) {
+        console.log('[Push-DEBUG] Push wird aktiviert');
+        console.log('[Push-DEBUG] VAPID Public Key:', process.env.REACT_APP_VAPID_PUBLIC_KEY);
         // Push-Subscription aktivieren
+        const applicationServerKey = urlBase64ToUint8Array(process.env.REACT_APP_VAPID_PUBLIC_KEY);
+        console.log('[Push-DEBUG] applicationServerKey (Uint8Array):', applicationServerKey);
         const subscription = await registration.pushManager.subscribe({
           userVisibleOnly: true,
-          applicationServerKey: process.env.REACT_APP_VAPID_PUBLIC_KEY
+          applicationServerKey
         });
-
+        console.log('[Push-DEBUG] Neue Subscription:', subscription);
         // Subscription in Supabase speichern
         const { error } = await supabase
           .from('push_subscriptions')
           .upsert({
             user_id: user.id,
-            endpoint: subscription.endpoint,
-            p256dh: btoa(String.fromCharCode.apply(null, new Uint8Array(subscription.getKey('p256dh')))),
-            auth: btoa(String.fromCharCode.apply(null, new Uint8Array(subscription.getKey('auth')))),
+            subscription: subscription.toJSON ? subscription.toJSON() : subscription,
             created_at: new Date().toISOString()
           });
-
-        if (error) throw error;
+        if (error) {
+          console.error('[Push-DEBUG] Fehler beim Speichern in Supabase:', error);
+          throw error;
+        }
         setPushEnabled(true);
         alert(t('PushBenachrichtigungenAktiviert'));
       } else {
         // Push-Subscription deaktivieren
+        console.log('[Push-DEBUG] Push wird deaktiviert');
         const subscription = await registration.pushManager.getSubscription();
+        console.log('[Push-DEBUG] Aktuelle Subscription zum Entfernen:', subscription);
         if (subscription) {
           await subscription.unsubscribe();
-          
           // Subscription aus Supabase entfernen
           const { error } = await supabase
             .from('push_subscriptions')
             .delete()
             .eq('user_id', user.id);
-
-          if (error) throw error;
+          if (error) {
+            console.error('[Push-DEBUG] Fehler beim Löschen in Supabase:', error);
+            throw error;
+          }
           setPushEnabled(false);
           alert(t('PushBenachrichtigungenDeaktiviert'));
         }
       }
     } catch (error) {
-      console.error('Error toggling push subscription:', error);
+      console.error('[Push-DEBUG] Fehler beim Umschalten der Push-Subscription:', error);
       alert('Fehler beim Aktivieren/Deaktivieren der Push-Benachrichtigungen');
     }
   };
