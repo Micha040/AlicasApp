@@ -217,7 +217,16 @@ export default function ChatTab({ user }) {
         filter: `chat_id=eq.${selectedChat.id}`
       }, payload => {
         if (payload.eventType === 'INSERT') {
-          setMessages(msgs => [...msgs, payload.new]);
+          // Prüfe auf Duplikate
+          setMessages(msgs => {
+            if (msgs.some(m => m.id === payload.new.id)) return msgs;
+            return [...msgs, payload.new];
+          });
+        } else if (payload.eventType === 'UPDATE') {
+          // Update nur die geänderte Nachricht
+          setMessages(msgs => 
+            msgs.map(msg => msg.id === payload.new.id ? payload.new : msg)
+          );
         }
       })
       .subscribe();
@@ -400,42 +409,21 @@ export default function ChatTab({ user }) {
     const unread = messages.filter(
       m => m.receiver_id === user.id && !m.is_read
     ).map(m => m.id);
-    // Nur wenn es neue ungelesene Nachrichten gibt
+    // Nur wenn es neue ungelesene Nachrichten gibt und sie sich von den zuletzt markierten unterscheiden
     if (unread.length > 0 && unread.join(',') !== lastMarkedRead.join(',')) {
       setLastMarkedRead(unread);
-      supabase.from('messages').update({ is_read: true }).in('id', unread);
+      // Batch-Update für bessere Performance
+      supabase.from('messages')
+        .update({ is_read: true })
+        .in('id', unread)
+        .then(() => {
+          // Lokal aktualisieren
+          setMessages(prev => prev.map(msg => 
+            unread.includes(msg.id) ? { ...msg, is_read: true } : msg
+          ));
+        });
     }
-    // eslint-disable-next-line
-  }, [selectedChat, messages, user]);
-
-  // Realtime-Subscription für Änderungen an Nachrichten (is_read)
-  useEffect(() => {
-    if (!selectedChat) return;
-    const channel = supabase.channel('messages-realtime-read')
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'messages',
-        filter: `chat_id=eq.${selectedChat.id}`
-      }, payload => {
-        if (payload.eventType === 'UPDATE' || payload.eventType === 'INSERT') {
-          setMessages(msgs => {
-            // Prüfe, ob die Nachricht schon existiert
-            if (msgs.some(m => m.id === payload.new.id)) {
-              // Nachricht ersetzen (z.B. falls is_read geändert wurde)
-              return msgs.map(m => m.id === payload.new.id ? payload.new : m);
-            } else {
-              // Nur hinzufügen, wenn sie noch nicht existiert
-              return [...msgs, payload.new];
-            }
-          });
-        }
-      })
-      .subscribe();
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [selectedChat]);
+  }, [selectedChat, messages, user, lastMarkedRead]);
 
   // Hilfsfunktion: Gibt true zurück, wenn es im Chat ungelesene Nachrichten für den aktuellen User gibt
   const hasUnread = (chat) => {
