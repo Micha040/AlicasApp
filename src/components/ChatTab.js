@@ -14,6 +14,7 @@ import Snackbar from '@mui/material/Snackbar';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import DoneIcon from '@mui/icons-material/Done';
 import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
+import CloseIcon from '@mui/icons-material/Close';
 import { useTranslation } from 'react-i18next';
 import { sendPushNotification } from '../utils/pushNotifications';
 
@@ -71,6 +72,9 @@ export default function ChatTab({ user }) {
   const [dialogLoading, setDialogLoading] = useState(false);
   const [lastMarkedRead, setLastMarkedRead] = useState([]);
   const [unreadCounts, setUnreadCounts] = useState({});
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxImg, setLightboxImg] = useState(null);
+  const [zoomContainer, setZoomContainer] = useState(null);
 
   // Lade alle Usernamen und Avatare für Mapping
   useEffect(() => {
@@ -514,6 +518,65 @@ export default function ChatTab({ user }) {
   // Vor dem Rendern der Nachrichten Duplikate filtern (z.B. nach id)
   const uniqueMessages = Array.from(new Map(messages.map(m => [m.id, m])).values());
 
+  // Hilfsfunktion zum Erstellen des Zoom-Containers
+  const createZoomContainer = () => {
+    if (zoomContainer) {
+      document.body.removeChild(zoomContainer);
+    }
+    const container = document.createElement('div');
+    container.style.position = 'fixed';
+    container.style.top = '0';
+    container.style.left = '0';
+    container.style.width = '100%';
+    container.style.height = '100%';
+    container.style.backgroundColor = 'rgba(40,40,40,0.95)';
+    container.style.zIndex = '9999';
+    container.style.display = 'flex';
+    container.style.justifyContent = 'center';
+    container.style.alignItems = 'center';
+    container.onclick = () => {
+      document.body.removeChild(container);
+      setZoomContainer(null);
+    };
+    document.body.appendChild(container);
+    setZoomContainer(container);
+    return container;
+  };
+
+  // Hilfsfunktion zum Speichern/Herunterladen des Bildes
+  const saveImage = async (imageUrl) => {
+    try {
+      // Prüfe ob iOS
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+      
+      if (isIOS) {
+        // Für iOS: Öffne das Bild in einem neuen Tab
+        const link = document.createElement('a');
+        link.href = imageUrl;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } else {
+        // Für andere Geräte: Download
+        const response = await fetch(imageUrl);
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `chat-image-${Date.now()}.jpg`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      }
+    } catch (error) {
+      console.error('Fehler beim Speichern des Bildes:', error);
+      alert('Fehler beim Speichern des Bildes. Bitte versuche es erneut.');
+    }
+  };
+
   // Mobile: Zeige nur Chat-Liste ODER Chat
   if (isMobile) {
     if (!selectedChat) {
@@ -619,6 +682,20 @@ export default function ChatTab({ user }) {
               {success}
             </Alert>
           </Snackbar>
+          <Dialog open={lightboxOpen} onClose={() => setLightboxOpen(false)} maxWidth="md" fullWidth>
+            <DialogContent sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', p: 0, bgcolor: '#222' }}>
+              <IconButton onClick={() => setLightboxOpen(false)} sx={{ position: 'absolute', top: 8, right: 8, color: '#fff', zIndex: 10 }}>
+                <CloseIcon />
+              </IconButton>
+              {lightboxImg && (
+                <img
+                  src={lightboxImg}
+                  alt="Bild groß"
+                  style={{ maxWidth: '90vw', maxHeight: '90vh', borderRadius: 8, boxShadow: '0 4px 32px #000a' }}
+                />
+              )}
+            </DialogContent>
+          </Dialog>
         </Box>
       );
     } else {
@@ -653,7 +730,71 @@ export default function ChatTab({ user }) {
                       <Paper sx={{ p: 1.5, bgcolor: msg.sender_id === user.id ? '#ff4081' : '#eee', color: msg.sender_id === user.id ? 'white' : 'black', borderRadius: 2, maxWidth: '70%', position: 'relative' }}>
                         {msg.image_url && (
                           <Box sx={{ position: 'relative', minHeight: 100 }}>
-                            <ChatImageWithLoader src={msg.image_url} alt="Bild" style={chatImageStyle} />
+                            <Box 
+                              onClick={() => { 
+                                console.log('[Lightbox-DEBUG] Bild wurde geklickt (Mobile):', msg.image_url);
+                                const container = createZoomContainer();
+                                
+                                // Download-Button erstellen
+                                const downloadBtn = document.createElement('button');
+                                const icon = document.createElement('span');
+                                icon.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 0 24 24" width="24" fill="white"><path d="M0 0h24v24H0z" fill="none"/><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>';
+                                downloadBtn.appendChild(icon);
+                                downloadBtn.style.position = 'absolute';
+                                downloadBtn.style.top = '20px';
+                                downloadBtn.style.right = '20px';
+                                downloadBtn.style.background = 'rgba(255,255,255,0.15)';
+                                downloadBtn.style.border = 'none';
+                                downloadBtn.style.borderRadius = '50%';
+                                downloadBtn.style.width = '40px';
+                                downloadBtn.style.height = '40px';
+                                downloadBtn.style.cursor = 'pointer';
+                                downloadBtn.style.zIndex = '10000';
+                                downloadBtn.style.display = 'flex';
+                                downloadBtn.style.alignItems = 'center';
+                                downloadBtn.style.justifyContent = 'center';
+                                downloadBtn.style.transition = 'background-color 0.2s';
+                                downloadBtn.onmouseover = () => downloadBtn.style.background = 'rgba(255,255,255,0.25)';
+                                downloadBtn.onmouseout = () => downloadBtn.style.background = 'rgba(255,255,255,0.15)';
+                                downloadBtn.onclick = async (e) => {
+                                  e.stopPropagation();
+                                  try {
+                                    await saveImage(msg.image_url);
+                                  } catch (error) {
+                                    console.error('Fehler beim Klick auf Download-Button:', error);
+                                  }
+                                };
+                                
+                                const img = new Image();
+                                img.src = msg.image_url;
+                                img.style.maxWidth = '100%';
+                                img.style.maxHeight = '100%';
+                                img.style.objectFit = 'contain';
+                                img.style.padding = '20px';
+                                img.style.borderRadius = '8px';
+                                img.onclick = (e) => {
+                                  e.stopPropagation();
+                                  document.body.removeChild(container);
+                                  setZoomContainer(null);
+                                };
+                                
+                                // Escape-Taste zum Schließen
+                                const handleEscape = (e) => {
+                                  if (e.key === 'Escape') {
+                                    document.body.removeChild(container);
+                                    setZoomContainer(null);
+                                    document.removeEventListener('keydown', handleEscape);
+                                  }
+                                };
+                                document.addEventListener('keydown', handleEscape);
+                                
+                                container.appendChild(img);
+                                container.appendChild(downloadBtn);
+                              }} 
+                              sx={{ cursor: 'zoom-in', width: '100%', height: '100%', display: 'inline-block' }}
+                            >
+                              <ChatImageWithLoader src={msg.image_url} alt="Bild" style={chatImageStyle} />
+                            </Box>
                           </Box>
                         )}
                         {msg.content && <Typography variant="body2">{msg.content}</Typography>}
@@ -781,7 +922,19 @@ export default function ChatTab({ user }) {
                       <Paper sx={{ p: 1.5, bgcolor: msg.sender_id === user.id ? '#ff4081' : '#eee', color: msg.sender_id === user.id ? 'white' : 'black', borderRadius: 2, maxWidth: '70%', position: 'relative' }}>
                         {msg.image_url && (
                           <Box sx={{ position: 'relative', minHeight: 100 }}>
-                            <ChatImageWithLoader src={msg.image_url} alt="Bild" style={chatImageStyle} />
+                            <Box 
+                              onClick={() => { 
+                                console.log('[Lightbox-DEBUG] Bild wurde geklickt:', msg.image_url);
+                                setLightboxImg(msg.image_url); 
+                                setLightboxOpen(true); 
+                              }} 
+                              sx={{ cursor: 'zoom-in', width: '100%', height: '100%', display: 'inline-block' }}
+                              tabIndex={0}
+                              role="button"
+                              aria-label="Bild vergrößern"
+                            >
+                              <ChatImageWithLoader src={msg.image_url} alt="Bild" style={chatImageStyle} />
+                            </Box>
                           </Box>
                         )}
                         {msg.content && <Typography variant="body2">{msg.content}</Typography>}
@@ -829,6 +982,21 @@ export default function ChatTab({ user }) {
           </Box>
         )}
       </Box>
+      {/* Lightbox-Dialog für große Bildanzeige */}
+      <Dialog open={lightboxOpen} onClose={() => setLightboxOpen(false)} maxWidth="md" fullWidth>
+        <DialogContent sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', p: 0, bgcolor: '#222' }}>
+          <IconButton onClick={() => setLightboxOpen(false)} sx={{ position: 'absolute', top: 8, right: 8, color: '#fff', zIndex: 10 }}>
+            <CloseIcon />
+          </IconButton>
+          {lightboxImg && (
+            <img
+              src={lightboxImg}
+              alt="Bild groß"
+              style={{ maxWidth: '90vw', maxHeight: '90vh', borderRadius: 8, boxShadow: '0 4px 32px #000a' }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </Box>
   );
 }
