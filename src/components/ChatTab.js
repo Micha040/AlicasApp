@@ -173,6 +173,7 @@ export default function ChatTab({ user }) {
         .order('created_at', { ascending: false })
         .limit(PAGE_SIZE);
       if (data) {
+        console.log('[Chat-DEBUG] Nachrichten aus DB geladen:', data);
         setMessages(data.reverse());
         setOldestMessageId(data.length > 0 ? data[data.length - 1].id : null);
         setHasMore(data.length === PAGE_SIZE);
@@ -220,16 +221,20 @@ export default function ChatTab({ user }) {
         table: 'messages',
         filter: `chat_id=eq.${selectedChat.id}`
       }, payload => {
+        console.log('[Chat-DEBUG] Realtime-Event empfangen:', payload);
         if (payload.eventType === 'INSERT') {
-          // Prüfe auf Duplikate
+          // Prüfe auf Duplikate und merge Felder
           setMessages(msgs => {
-            if (msgs.some(m => m.id === payload.new.id)) return msgs;
+            const existing = msgs.find(m => m.id === payload.new.id);
+            if (existing) {
+              // Merge nur, wenn das neue Objekt mehr Felder hat (z.B. image_url)
+              return msgs.map(m => m.id === payload.new.id ? { ...m, ...payload.new } : m);
+            }
             return [...msgs, payload.new];
           });
         } else if (payload.eventType === 'UPDATE') {
-          // Update nur die geänderte Nachricht
           setMessages(msgs => 
-            msgs.map(msg => msg.id === payload.new.id ? payload.new : msg)
+            msgs.map(msg => msg.id === payload.new.id ? { ...msg, ...payload.new } : msg)
           );
         }
       })
