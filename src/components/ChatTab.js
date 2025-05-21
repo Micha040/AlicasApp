@@ -292,11 +292,9 @@ export default function ChatTab({ user }) {
     if ((!newMessage.trim() && !imageToSend) || !selectedChat) return;
     let image_url = null;
     if (imageToSend) {
-      // Bild als Base64 in Supabase speichern (alternativ: Storage nutzen)
       image_url = imageToSend;
     }
-    // Chatpartner-ID ermitteln
-    const partnerId = selectedChat.user1_id === user.id ? selectedChat.user2_id : selectedChat.user1_id;
+    const partnerId = Number(selectedChat.user1_id === user.id ? selectedChat.user2_id : selectedChat.user1_id);
     await supabase.from('messages').insert([
       {
         chat_id: selectedChat.id,
