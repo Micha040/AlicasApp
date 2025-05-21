@@ -42,6 +42,7 @@ export default function ChatTab({ user }) {
   const [dialogError, setDialogError] = useState('');
   const [dialogSuccess, setDialogSuccess] = useState('');
   const [dialogLoading, setDialogLoading] = useState(false);
+  const [lastMarkedRead, setLastMarkedRead] = useState([]);
 
   // Lade alle Usernamen und Avatare für Mapping
   useEffect(() => {
@@ -396,15 +397,14 @@ export default function ChatTab({ user }) {
   // Nachrichten beim Öffnen des Chats als gelesen markieren
   useEffect(() => {
     if (!selectedChat || !user) return;
-    const markAsRead = async () => {
-      const unread = messages.filter(
-        m => m.receiver_id === user.id && !m.is_read
-      ).map(m => m.id);
-      if (unread.length > 0) {
-        await supabase.from('messages').update({ is_read: true }).in('id', unread);
-      }
-    };
-    markAsRead();
+    const unread = messages.filter(
+      m => m.receiver_id === user.id && !m.is_read
+    ).map(m => m.id);
+    // Nur wenn es neue ungelesene Nachrichten gibt
+    if (unread.length > 0 && unread.join(',') !== lastMarkedRead.join(',')) {
+      setLastMarkedRead(unread);
+      supabase.from('messages').update({ is_read: true }).in('id', unread);
+    }
     // eslint-disable-next-line
   }, [selectedChat, messages, user]);
 
@@ -420,12 +420,12 @@ export default function ChatTab({ user }) {
       }, payload => {
         if (payload.eventType === 'UPDATE' || payload.eventType === 'INSERT') {
           setMessages(msgs => {
-            const idx = msgs.findIndex(m => m.id === payload.new.id);
-            if (idx !== -1) {
-              const newMsgs = [...msgs];
-              newMsgs[idx] = payload.new;
-              return newMsgs;
+            // Prüfe, ob die Nachricht schon existiert
+            if (msgs.some(m => m.id === payload.new.id)) {
+              // Nachricht ersetzen (z.B. falls is_read geändert wurde)
+              return msgs.map(m => m.id === payload.new.id ? payload.new : m);
             } else {
+              // Nur hinzufügen, wenn sie noch nicht existiert
               return [...msgs, payload.new];
             }
           });
