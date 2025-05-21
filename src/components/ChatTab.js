@@ -309,7 +309,7 @@ export default function ChatTab({ user }) {
       image_url = imageToSend;
     }
     const partnerId = Number(selectedChat.user1_id === user.id ? selectedChat.user2_id : selectedChat.user1_id);
-    await supabase.from('messages').insert([
+    const { error } = await supabase.from('messages').insert([
       {
         chat_id: selectedChat.id,
         sender_id: user.id,
@@ -320,6 +320,14 @@ export default function ChatTab({ user }) {
     ]);
     setNewMessage('');
     setImageToSend(null);
+    if (!error) {
+      console.log('[Push-DEBUG] Sende Push an Partner:', partnerId, 'von', user.username, 'mit Nachricht:', newMessage);
+      await sendPushNotification(
+        partnerId,
+        `${user.username} (${t('NeueNachricht')})`,
+        newMessage
+      );
+    }
   };
 
   // Bild auswählen
