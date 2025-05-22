@@ -19,6 +19,7 @@ import {
 } from '@mui/material';
 import { useTranslation } from 'react-i18next';
 import urlBase64ToUint8Array from '../utils/urlBase64ToUint8Array';
+import { supabase } from '../supabaseClient';
 
 export default function SettingsDialog({ 
   open, 
@@ -44,28 +45,82 @@ export default function SettingsDialog({
   };
 
   const handlePushToggle = async () => {
-    if (!pushEnabled) {
-      try {
-        const registration = await navigator.serviceWorker.ready;
+    console.log('[Push-DEBUG] ===== PUSH TOGGLE START =====');
+    console.log('[Push-DEBUG] User:', user);
+
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+      console.log('[Push-DEBUG] Push-API nicht unterstützt');
+      alert(t('PushBenachrichtigungenNichtUnterstuetzt'));
+      return;
+    }
+
+    try {
+      const registration = await navigator.serviceWorker.ready;
+      console.log('[Push-DEBUG] Service Worker ready:', registration);
+
+      if (!pushEnabled) {
+        console.log('[Push-DEBUG] Push wird aktiviert');
+        console.log('[Push-DEBUG] User ID:', user.id);
+        
+        const applicationServerKey = urlBase64ToUint8Array(process.env.REACT_APP_VAPID_PUBLIC_KEY);
+        
         const subscription = await registration.pushManager.subscribe({
           userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(process.env.REACT_APP_VAPID_PUBLIC_KEY)
+          applicationServerKey
         });
+
+        console.log('[Push-DEBUG] Neue Subscription:', subscription);
+        const subscriptionJson = subscription.toJSON();
+        
+        // Subscription in Supabase speichern
+        const subscriptionData = {
+          user_id: user.id,
+          subscription: subscriptionJson,
+          created_at: new Date().toISOString()
+        };
+        
+        console.log('[Push-DEBUG] Versuche Supabase Insert mit Daten:', subscriptionData);
+        
+        const { data, error } = await supabase
+          .from('push_subscriptions')
+          .upsert(subscriptionData)
+          .select();
+
+        if (error) {
+          console.error('[Push-DEBUG] Fehler beim Speichern in Supabase:', error);
+          throw error;
+        }
+
+        console.log('[Push-DEBUG] Supabase Antwort:', data);
+        console.log('[Push-DEBUG] ===== PUSH TOGGLE ENDE =====');
+        
         setPushEnabled(true);
-      } catch (error) {
-        console.error('Fehler beim Aktivieren der Push-Benachrichtigungen:', error);
-      }
-    } else {
-      try {
-        const registration = await navigator.serviceWorker.ready;
+        alert(t('PushBenachrichtigungenAktiviert'));
+      } else {
+        // Push-Subscription deaktivieren
+        console.log('[Push-DEBUG] Push wird deaktiviert');
         const subscription = await registration.pushManager.getSubscription();
+        
         if (subscription) {
           await subscription.unsubscribe();
+          
+          const { error } = await supabase
+            .from('push_subscriptions')
+            .delete()
+            .eq('user_id', user.id);
+
+          if (error) {
+            console.error('[Push-DEBUG] Fehler beim Löschen in Supabase:', error);
+            throw error;
+          }
+
+          setPushEnabled(false);
+          alert(t('PushBenachrichtigungenDeaktiviert'));
         }
-        setPushEnabled(false);
-      } catch (error) {
-        console.error('Fehler beim Deaktivieren der Push-Benachrichtigungen:', error);
       }
+    } catch (error) {
+      console.error('[Push-DEBUG] Fehler beim Umschalten der Push-Subscription:', error);
+      alert('Fehler beim Aktivieren/Deaktivieren der Push-Benachrichtigungen: ' + error.message);
     }
   };
 
