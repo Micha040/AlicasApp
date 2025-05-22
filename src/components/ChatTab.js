@@ -1027,7 +1027,7 @@ export default function ChatTab({ user, onChatDetailViewChange }) {
                 )}
                 {uniqueMessages.map(msg => (
                   <ListItem key={msg.id + '-' + (msg.created_at || '')} sx={{ justifyContent: msg.sender_id === user.id ? 'flex-end' : 'flex-start' }}>
-                    <Paper sx={{ p: 1.5, bgcolor: msg.sender_id === user.id ? '#ff4081' : '#eee', color: msg.sender_id === user.id ? 'white' : 'black', borderRadius: 2, maxWidth: '70%', position: 'relative' }}>
+                    <Paper sx={{ p: 1.5, bgcolor: msg.sender_id === user.id ? '#ff4081' : '#e0e0e0', color: msg.sender_id === user.id ? 'white' : 'black', borderRadius: 2, maxWidth: '70%', position: 'relative' }}>
                       {msg.image_url && (
                         <Box sx={{ position: 'relative', minHeight: 100 }}>
                           <Box 
@@ -1301,7 +1301,7 @@ export default function ChatTab({ user, onChatDetailViewChange }) {
                     )}
                     {uniqueMessages.map(msg => (
                       <ListItem key={msg.id + '-' + (msg.created_at || '')} sx={{ justifyContent: msg.sender_id === user.id ? 'flex-end' : 'flex-start' }}>
-                        <Paper sx={{ p: 1.5, bgcolor: msg.sender_id === user.id ? '#ff4081' : '#eee', color: msg.sender_id === user.id ? 'white' : 'black', borderRadius: 2, maxWidth: '70%', position: 'relative' }}>
+                        <Paper sx={{ p: 1.5, bgcolor: msg.sender_id === user.id ? '#ff4081' : '#e0e0e0', color: msg.sender_id === user.id ? 'white' : 'black', borderRadius: 2, maxWidth: '70%', position: 'relative' }}>
                           {msg.image_url && (
                             <Box sx={{ position: 'relative', minHeight: 100 }}>
                               <Box 
@@ -1403,7 +1403,7 @@ function ChatImageWithLoader({ src, alt, style }) {
   );
 }
 
-function AudioWaveform({ waveform, color = "#fff", progress = 0, onScrub, isScrubbing }) {
+function AudioWaveform({ waveform, color = "#fff", progress = 0, onScrub, isScrubbing, isOwn }) {
   const svgRef = React.useRef();
   const isDraggingRef = React.useRef(false);
   const width = waveform.length * 10;
@@ -1521,7 +1521,7 @@ function AudioWaveform({ waveform, color = "#fff", progress = 0, onScrub, isScru
         y={0}
         width={progressBarWidth}
         height={height}
-        fill="#fff"
+        fill={isOwn ? "#fff" : "#e91e63"}
         opacity={isScrubbing ? 0.95 : 0.8}
         rx={progressBarRadius}
         style={{ 
@@ -1685,7 +1685,7 @@ function VoiceMessageBubble({ url, duration, isOwn, waveform: waveformProp }) {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'space-between',
-      bgcolor: isOwn ? '#ff4081' : '#ffe3f3',
+      bgcolor: isOwn ? '#ff4081' : '#e0e0e0',
       borderRadius: 3,
       px: 2,
       py: 1,
@@ -1703,12 +1703,12 @@ function VoiceMessageBubble({ url, duration, isOwn, waveform: waveformProp }) {
           disabled={isLoading}
           sx={{ 
             ml: -1.5, 
-            color: 'white', 
-            bgcolor: isOwn ? '#ff4081' : '#fff', 
-            '&:hover': { bgcolor: isOwn ? '#e91e63' : '#e3f2fd' },
+            color: isOwn ? 'white' : '#ff4081', 
+            bgcolor: isOwn ? '#ff4081' : '#e0e0e0', 
+            '&:hover': { bgcolor: isOwn ? '#e91e63' : '#d5d5d5' },
             '&.Mui-disabled': {
-              color: 'rgba(255, 255, 255, 0.5)',
-              bgcolor: isOwn ? 'rgba(255, 64, 129, 0.5)' : 'rgba(255, 255, 255, 0.5)'
+              color: isOwn ? 'rgba(255, 255, 255, 0.5)' : 'rgba(255, 64, 129, 0.5)',
+              bgcolor: isOwn ? 'rgba(255, 64, 129, 0.5)' : 'rgba(224, 224, 224, 0.5)'
             }
           }}
         >
@@ -1724,10 +1724,11 @@ function VoiceMessageBubble({ url, duration, isOwn, waveform: waveformProp }) {
           {waveform ? (
             <AudioWaveform
               waveform={waveform}
-              color="#fff"
+              color={isOwn ? "#fff" : "#ff4081"}
               progress={progress}
               onScrub={handleScrub}
               isScrubbing={isScrubbing}
+              isOwn={isOwn}
             />
           ) : waveformError ? (
             <Typography variant="caption" color="error">Waveform-Fehler</Typography>
