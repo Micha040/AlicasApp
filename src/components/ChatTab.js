@@ -327,90 +327,31 @@ export default function ChatTab({ user, onChatDetailViewChange }) {
     fetchUnreadCounts();
   }, [chats, user]);
 
-  // Realtime-Subscription für neue Nachrichten
+  // Realtime-Subscription für neue Nachrichten und message_reads
   useEffect(() => {
-    if (!selectedChat) return;
-    const channel = supabase.channel('messages-realtime')
+    if (!user) return;
+    const channel = supabase.channel('messages-unread-realtime')
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
         table: 'messages',
-        filter: `chat_id=eq.${selectedChat.id}`
-      }, async payload => {
-        console.log('[Chat-DEBUG] Realtime-Event empfangen:', payload);
-        if (payload.eventType === 'INSERT') {
-          // Hole die message_reads für die neue Nachricht
-          const { data: readData } = await supabase
-            .from('message_reads')
-            .select('*')
-            .eq('message_id', payload.new.id)
-            .eq('user_id', user.id);
-          
-          // Füge is_read basierend auf message_reads hinzu
-          const newMessage = {
-            ...payload.new,
-            is_read: readData && readData.length > 0
-          };
-          
-          // Prüfe auf Duplikate und merge Felder
-          setMessages(msgs => {
-            const existing = msgs.find(m => m.id === newMessage.id);
-            if (existing) {
-              return msgs.map(m => m.id === newMessage.id ? { ...m, ...newMessage } : m);
-            }
-            return [...msgs, newMessage];
-          });
-        } else if (payload.eventType === 'UPDATE') {
-          // Hole die message_reads für die aktualisierte Nachricht
-          const { data: readData } = await supabase
-            .from('message_reads')
-            .select('*')
-            .eq('message_id', payload.new.id)
-            .eq('user_id', user.id);
-          
-          // Füge is_read basierend auf message_reads hinzu
-          const updatedMessage = {
-            ...payload.new,
-            is_read: readData && readData.length > 0
-          };
-          
-          setMessages(msgs => 
-            msgs.map(msg => msg.id === updatedMessage.id ? { ...msg, ...updatedMessage } : msg)
-          );
-        }
+        filter: `receiver_id=eq.${user.id}`
+      }, () => {
+        fetchUnreadCounts();
       })
-      .subscribe();
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [selectedChat, user]);
-
-  // Realtime-Subscription für message_reads
-  useEffect(() => {
-    if (!selectedChat || !user) return;
-    const channel = supabase.channel('message-reads-realtime')
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
         table: 'message_reads',
         filter: `user_id=eq.${user.id}`
-      }, async payload => {
-        // Wenn eine Nachricht als gelesen markiert wurde, aktualisiere den Status
-        if (payload.eventType === 'INSERT') {
-          setMessages(msgs => 
-            msgs.map(msg => 
-              msg.id === payload.new.message_id 
-                ? { ...msg, is_read: true }
-                : msg
-            )
-          );
-        }
+      }, () => {
+        fetchUnreadCounts();
       })
       .subscribe();
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [selectedChat, user]);
+  }, [user]);
 
   // Nachrichten laden (nur die letzten PAGE_SIZE)
   useEffect(() => {
@@ -478,6 +419,39 @@ export default function ChatTab({ user, onChatDetailViewChange }) {
       loadMoreMessages();
     }
   };
+
+  // Realtime-Subscription für neue Nachrichten
+  useEffect(() => {
+    if (!selectedChat) return;
+    const channel = supabase.channel('messages-realtime')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'messages',
+        filter: `chat_id=eq.${selectedChat.id}`
+      }, payload => {
+        console.log('[Chat-DEBUG] Realtime-Event empfangen:', payload);
+        if (payload.eventType === 'INSERT') {
+          // Prüfe auf Duplikate und merge Felder
+          setMessages(msgs => {
+            const existing = msgs.find(m => m.id === payload.new.id);
+            if (existing) {
+              // Merge nur, wenn das neue Objekt mehr Felder hat (z.B. image_url)
+              return msgs.map(m => m.id === payload.new.id ? { ...m, ...payload.new } : m);
+            }
+            return [...msgs, payload.new];
+          });
+        } else if (payload.eventType === 'UPDATE') {
+          setMessages(msgs => 
+            msgs.map(msg => msg.id === payload.new.id ? { ...msg, ...payload.new } : msg)
+          );
+        }
+      })
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [selectedChat]);
 
   // Auto-Scroll zu neuen Nachrichten (nur wenn neue unten angehängt werden)
   useEffect(() => {
