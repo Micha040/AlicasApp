@@ -47,16 +47,28 @@ export default function SettingsDialog({
   const handlePushToggle = async () => {
     console.log('[Push-DEBUG] ===== PUSH TOGGLE START =====');
     console.log('[Push-DEBUG] User:', user);
+    console.log('[Push-DEBUG] User Agent:', navigator.userAgent);
 
-    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-      console.log('[Push-DEBUG] Push-API nicht unterstützt');
-      alert(t('PushBenachrichtigungenNichtUnterstuetzt'));
+    if (!('serviceWorker' in navigator)) {
+      console.error('[Push-DEBUG] Service Worker wird nicht unterstützt');
+      alert(t('ServiceWorkerNichtUnterstuetzt'));
+      return;
+    }
+
+    if (!('PushManager' in window)) {
+      console.error('[Push-DEBUG] Push API wird nicht unterstützt');
+      alert(t('PushAPINichtUnterstuetzt'));
       return;
     }
 
     try {
-      const registration = await navigator.serviceWorker.ready;
-      console.log('[Push-DEBUG] Service Worker ready:', registration);
+      // Service Worker registrieren
+      const registration = await navigator.serviceWorker.register('/service-worker.js');
+      console.log('[Push-DEBUG] Service Worker registriert:', registration);
+
+      // Warten bis der Service Worker aktiv ist
+      await navigator.serviceWorker.ready;
+      console.log('[Push-DEBUG] Service Worker ready');
 
       if (!pushEnabled) {
         console.log('[Push-DEBUG] Push wird aktiviert');
