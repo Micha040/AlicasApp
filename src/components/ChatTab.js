@@ -266,93 +266,6 @@ export default function ChatTab({ user, onChatDetailViewChange }) {
     fetchRequests();
   }, [user]);
 
-  // Nachrichten beim Öffnen des Chats als gelesen markieren
-  useEffect(() => {
-    if (!selectedChat || !user) return;
-    const unread = messages.filter(
-      m => m.receiver_id === user.id && !m.is_read
-    ).map(m => m.id);
-    // Nur wenn es neue ungelesene Nachrichten gibt und sie sich von den zuletzt markierten unterscheiden
-    if (unread.length > 0 && unread.join(',') !== lastMarkedRead.join(',')) {
-      setLastMarkedRead(unread);
-      // Batch-Insert in message_reads Tabelle
-      const now = new Date().toISOString();
-      const readRecords = unread.map(messageId => ({
-        message_id: messageId,
-        user_id: user.id,
-        read_at: now
-      }));
-      supabase.from('message_reads')
-        .insert(readRecords)
-        .then(() => {
-          // Lokal aktualisieren
-          setMessages(prev => prev.map(msg => 
-            unread.includes(msg.id) ? { ...msg, is_read: true } : msg
-          ));
-        });
-    }
-  }, [selectedChat, messages, user, lastMarkedRead]);
-
-  // Hilfsfunktion: Gibt true zurück, wenn es im Chat ungelesene Nachrichten für den aktuellen User gibt
-  const hasUnread = (chat) => {
-    return messages.some(
-      m => m.chat_id === chat.id && m.receiver_id === user.id && !m.is_read
-    );
-  };
-
-  // Neue Funktion: Hole ungelesene Nachrichten pro Chat aus Supabase
-  const fetchUnreadCounts = async () => {
-    if (!user) return;
-    const { data, error } = await supabase
-      .from('messages')
-      .select('id, chat_id')
-      .eq('receiver_id', user.id)
-      .not('id', 'in', (
-        supabase
-          .from('message_reads')
-          .select('message_id')
-          .eq('user_id', user.id)
-      ));
-    if (!error && data) {
-      const counts = {};
-      data.forEach(row => {
-        counts[row.chat_id] = (counts[row.chat_id] || 0) + 1;
-      });
-      setUnreadCounts(counts);
-    }
-  };
-
-  // Nach jedem Laden der Chats und bei neuen Nachrichten aufrufen
-  useEffect(() => {
-    fetchUnreadCounts();
-  }, [chats, user]);
-
-  // Realtime-Subscription für neue Nachrichten und message_reads
-  useEffect(() => {
-    if (!user) return;
-    const channel = supabase.channel('messages-unread-realtime')
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'messages',
-        filter: `receiver_id=eq.${user.id}`
-      }, () => {
-        fetchUnreadCounts();
-      })
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'message_reads',
-        filter: `user_id=eq.${user.id}`
-      }, () => {
-        fetchUnreadCounts();
-      })
-      .subscribe();
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [user]);
-
   // Nachrichten laden (nur die letzten PAGE_SIZE)
   useEffect(() => {
     if (!selectedChat) return;
@@ -361,23 +274,15 @@ export default function ChatTab({ user, onChatDetailViewChange }) {
     const fetchMessages = async () => {
       const { data } = await supabase
         .from('messages')
-        .select(`
-          *,
-          message_reads!inner(read_at)
-        `)
+        .select('*')
         .eq('chat_id', selectedChat.id)
         .order('created_at', { ascending: false })
         .limit(PAGE_SIZE);
       if (data) {
         console.log('[Chat-DEBUG] Nachrichten aus DB geladen:', data);
-        // Transformiere die Daten, um is_read basierend auf message_reads zu setzen
-        const transformedData = data.map(msg => ({
-          ...msg,
-          is_read: msg.message_reads && msg.message_reads.length > 0
-        }));
-        setMessages(transformedData.reverse());
-        setOldestMessageId(transformedData.length > 0 ? transformedData[transformedData.length - 1].id : null);
-        setHasMore(transformedData.length === PAGE_SIZE);
+        setMessages(data.reverse());
+        setOldestMessageId(data.length > 0 ? data[data.length - 1].id : null);
+        setHasMore(data.length === PAGE_SIZE);
       }
       setLoadingMessages(false);
     };
@@ -390,23 +295,15 @@ export default function ChatTab({ user, onChatDetailViewChange }) {
     setLoadingMore(true);
     const { data } = await supabase
       .from('messages')
-      .select(`
-        *,
-        message_reads!inner(read_at)
-      `)
+      .select('*')
       .eq('chat_id', selectedChat.id)
       .lt('id', oldestMessageId)
       .order('created_at', { ascending: false })
       .limit(PAGE_SIZE);
     if (data && data.length > 0) {
-      // Transformiere die Daten, um is_read basierend auf message_reads zu setzen
-      const transformedData = data.map(msg => ({
-        ...msg,
-        is_read: msg.message_reads && msg.message_reads.length > 0
-      }));
-      setMessages(prev => [...transformedData.reverse(), ...prev]);
-      setOldestMessageId(transformedData[transformedData.length - 1].id);
-      setHasMore(transformedData.length === PAGE_SIZE);
+      setMessages(prev => [...data.reverse(), ...prev]);
+      setOldestMessageId(data[data.length - 1].id);
+      setHasMore(data.length === PAGE_SIZE);
     } else {
       setHasMore(false);
     }
@@ -626,6 +523,75 @@ export default function ChatTab({ user, onChatDetailViewChange }) {
       setDialogResult(null);
     }
   };
+
+  // Nachrichten beim Öffnen des Chats als gelesen markieren
+  useEffect(() => {
+    if (!selectedChat || !user) return;
+    const unread = messages.filter(
+      m => m.receiver_id === user.id && !m.is_read
+    ).map(m => m.id);
+    // Nur wenn es neue ungelesene Nachrichten gibt und sie sich von den zuletzt markierten unterscheiden
+    if (unread.length > 0 && unread.join(',') !== lastMarkedRead.join(',')) {
+      setLastMarkedRead(unread);
+      // Batch-Update für bessere Performance
+      supabase.from('messages')
+        .update({ is_read: true })
+        .in('id', unread)
+        .then(() => {
+          // Lokal aktualisieren
+          setMessages(prev => prev.map(msg => 
+            unread.includes(msg.id) ? { ...msg, is_read: true } : msg
+          ));
+        });
+    }
+  }, [selectedChat, messages, user, lastMarkedRead]);
+
+  // Hilfsfunktion: Gibt true zurück, wenn es im Chat ungelesene Nachrichten für den aktuellen User gibt
+  const hasUnread = (chat) => {
+    return messages.some(
+      m => m.chat_id === chat.id && m.receiver_id === user.id && !m.is_read
+    );
+  };
+
+  // Neue Funktion: Hole ungelesene Nachrichten pro Chat aus Supabase
+  const fetchUnreadCounts = async () => {
+    if (!user) return;
+    const { data, error } = await supabase
+      .from('messages')
+      .select('id, chat_id')
+      .eq('receiver_id', user.id)
+      .eq('is_read', false);
+    if (!error && data) {
+      const counts = {};
+      data.forEach(row => {
+        counts[row.chat_id] = (counts[row.chat_id] || 0) + 1;
+      });
+      setUnreadCounts(counts);
+    }
+  };
+
+  // Nach jedem Laden der Chats und bei neuen Nachrichten aufrufen
+  useEffect(() => {
+    fetchUnreadCounts();
+  }, [chats, user]);
+
+  // Realtime-Subscription für neue Nachrichten und Updates (nur für unreadCounts)
+  useEffect(() => {
+    if (!user) return;
+    const channel = supabase.channel('messages-unread-realtime')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'messages',
+        filter: `receiver_id=eq.${user.id}`
+      }, () => {
+        fetchUnreadCounts();
+      })
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
 
   // Vor dem Rendern der Nachrichten Duplikate filtern (z.B. nach id)
   const uniqueMessages = Array.from(new Map(messages.map(m => [m.id, m])).values());
