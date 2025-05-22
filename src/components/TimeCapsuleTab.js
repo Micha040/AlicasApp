@@ -152,7 +152,7 @@ export default function TimeCapsuleTab() {
               <Card>
                 <CardContent>
                   <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                    <Avatar sx={{ width: 32, height: 32, mr: 1 }}>
+                    <Avatar sx={{ width: 32, height: 32, mr: 1, bgcolor: 'grey.400' }}>
                       {memory.posted_by ? memory.posted_by[0]?.toUpperCase() : '?'}
                     </Avatar>
                     <Typography variant="subtitle2" color="text.secondary">

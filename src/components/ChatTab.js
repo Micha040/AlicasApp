@@ -982,7 +982,7 @@ export default function ChatTab({ user, onChatDetailViewChange }) {
           }}>
             <IconButton onClick={() => setSelectedChat(null)}><ArrowBackIcon /></IconButton>
             {/* Avatar und Username des Chatpartners */}
-            <Avatar src={partner.avatar_url} sx={{ width: 36, height: 36, ml: 1, mr: 1 }}>
+            <Avatar src={partner.avatar_url} sx={{ width: 36, height: 36, ml: 1, mr: 1, bgcolor: 'grey.400' }}>
               {(!partner.avatar_url && partner.username) ? partner.username[0].toUpperCase() : ''}
             </Avatar>
             <Typography variant="h6" sx={{ fontWeight: 500 }}>{partner.username}</Typography>

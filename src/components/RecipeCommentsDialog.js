@@ -70,7 +70,7 @@ export default function RecipeCommentsDialog({ open, onClose, recipeId, user }) 
         ) : (
           comments.map((c) => (
             <Box key={c.id} sx={{ mb: 3, display: 'flex', alignItems: 'flex-start', gap: 2 }}>
-              <Avatar src={c.user?.avatar_url} alt={c.user?.username} />
+              <Avatar src={c.user?.avatar_url} alt={c.user?.username} sx={{ bgcolor: 'grey.400' }} />
               <Box>
                 <Typography variant="subtitle2">{c.user?.username || t('Unbekannt')}</Typography>
                 <Typography variant="body2" sx={{ mb: 1 }}>{c.comment}</Typography>

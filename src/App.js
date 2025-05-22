@@ -846,7 +846,7 @@ function App() {
                       color="inherit"
                       onClick={() => setProfileDialogOpen(true)}
                     >
-                      <Avatar src={user?.avatar_url || "https://i.pravatar.cc/40?img=1"} />
+                      <Avatar src={user?.avatar_url} sx={{ bgcolor: 'grey.400' }} />
                     </IconButton>
                     <Box sx={{ flex: 1 }} />
                     <IconButton size="large" edge="end" color="inherit" onClick={() => setSettingsDialogOpen(true)}>
