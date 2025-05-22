@@ -70,20 +70,8 @@ import Select from '@mui/material/Select';
 import MenuItem from '@mui/material/MenuItem';
 import './i18n';
 import { useTranslation } from 'react-i18next';
-
-// Hilfsfunktion für VAPID-Key-Umwandlung
-function urlBase64ToUint8Array(base64String) {
-  const padding = '='.repeat((4 - base64String.length % 4) % 4);
-  const base64 = (base64String + padding)
-    .replace(/-/g, '+')
-    .replace(/_/g, '/');
-  const rawData = window.atob(base64);
-  const outputArray = new Uint8Array(rawData.length);
-  for (let i = 0; i < rawData.length; ++i) {
-    outputArray[i] = rawData.charCodeAt(i);
-  }
-  return outputArray;
-}
+import SettingsDialog from './components/SettingsDialog';
+import urlBase64ToUint8Array from './utils/urlBase64ToUint8Array';
 
 function HideOnScroll(props) {
   const { children, setAppBarHidden } = props;
@@ -929,6 +917,26 @@ function App() {
           </>
         } />
       </Routes>
+      
+      {/* Dialoge */}
+      <ProfileDialog 
+        open={profileDialogOpen}
+        onClose={() => setProfileDialogOpen(false)}
+        user={user}
+        onLogout={handleLogout}
+        onProfileUpdate={handleProfileUpdate}
+      />
+      <SettingsDialog
+        open={settingsDialogOpen}
+        onClose={() => setSettingsDialogOpen(false)}
+        user={user}
+        themeSetting={themeSetting}
+        setThemeSetting={setThemeSetting}
+        languageSetting={languageSetting}
+        setLanguageSetting={setLanguageSetting}
+        pushEnabled={pushEnabled}
+        setPushEnabled={setPushEnabled}
+      />
     </Box>
   );
 }
