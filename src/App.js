@@ -669,7 +669,9 @@ function App() {
 
   // Push-Subscription aktivieren/deaktivieren
   const handlePushToggle = async () => {
-    console.log('[Push-DEBUG] handlePushToggle aufgerufen');
+    console.log('[Push-DEBUG] ===== PUSH TOGGLE START =====');
+    console.log('[Push-DEBUG] User:', user);
+    
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
       console.log('[Push-DEBUG] Push-API nicht unterstützt');
       alert(t('PushBenachrichtigungenNichtUnterstuetzt'));
@@ -682,6 +684,8 @@ function App() {
 
       if (!pushEnabled) {
         console.log('[Push-DEBUG] Push wird aktiviert');
+        console.log('[Push-DEBUG] User ID:', user.id);
+        
         const applicationServerKey = urlBase64ToUint8Array(process.env.REACT_APP_VAPID_PUBLIC_KEY);
         
         const subscription = await registration.pushManager.subscribe({
@@ -691,25 +695,29 @@ function App() {
 
         console.log('[Push-DEBUG] Neue Subscription:', subscription);
         const subscriptionJson = subscription.toJSON();
-        console.log('[Push-DEBUG] Subscription als JSON:', subscriptionJson);
-
+        
         // Subscription in Supabase speichern
+        const subscriptionData = {
+          user_id: user.id,
+          subscription: subscriptionJson,
+          created_at: new Date().toISOString()
+        };
+        
+        console.log('[Push-DEBUG] Versuche Supabase Insert mit Daten:', subscriptionData);
+        
         const { data, error } = await supabase
           .from('push_subscriptions')
-          .upsert({
-            user_id: user.id,
-            subscription: subscriptionJson,
-            created_at: new Date().toISOString()
-          }, {
-            onConflict: 'user_id'
-          });
+          .upsert(subscriptionData)
+          .select();
 
         if (error) {
           console.error('[Push-DEBUG] Fehler beim Speichern in Supabase:', error);
           throw error;
         }
 
-        console.log('[Push-DEBUG] Subscription erfolgreich in Supabase gespeichert:', data);
+        console.log('[Push-DEBUG] Supabase Antwort:', data);
+        console.log('[Push-DEBUG] ===== PUSH TOGGLE ENDE =====');
+        
         setPushEnabled(true);
         alert(t('PushBenachrichtigungenAktiviert'));
       } else {
