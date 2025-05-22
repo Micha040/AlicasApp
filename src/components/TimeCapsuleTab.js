@@ -22,6 +22,7 @@ import AddIcon from '@mui/icons-material/Add';
 import AddPhotoAlternateIcon from '@mui/icons-material/AddPhotoAlternate';
 import { supabase } from '../supabaseClient';
 import { useTranslation } from 'react-i18next';
+import CircularProgress from '@mui/material/CircularProgress';
 
 export default function TimeCapsuleTab() {
   const { t } = useTranslation();
@@ -41,23 +42,49 @@ export default function TimeCapsuleTab() {
   const [error, setError] = useState('');
   const [openDialog, setOpenDialog] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+  const PAGE_SIZE = 20;
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const listRef = React.useRef();
 
   useEffect(() => {
-    fetchMemories();
+    setMemories([]);
+    setPage(0);
+    setHasMore(true);
+    fetchMemories(0, true);
+    // eslint-disable-next-line
   }, []);
 
-  const fetchMemories = async () => {
+  const fetchMemories = async (pageToLoad = 0, replace = false) => {
     setLoading(true);
+    const from = pageToLoad * PAGE_SIZE;
+    const to = from + PAGE_SIZE - 1;
     const { data, error } = await supabase
       .from('memories')
       .select('*')
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .range(from, to);
     if (error) {
       setError(t('FehlerLaden') + ': ' + error.message);
     } else {
-      setMemories(data);
+      if (replace) {
+        setMemories(data);
+      } else {
+        setMemories(prev => [...prev, ...data]);
+      }
+      setHasMore(data.length === PAGE_SIZE);
     }
     setLoading(false);
+  };
+
+  // Infinite Scroll Handler
+  const handleScroll = (e) => {
+    const el = e.target;
+    if (hasMore && !loading && el.scrollHeight - el.scrollTop - el.clientHeight < 100) {
+      const nextPage = page + 1;
+      setPage(nextPage);
+      fetchMemories(nextPage);
+    }
   };
 
   const handleAddMemory = async () => {
@@ -109,7 +136,7 @@ export default function TimeCapsuleTab() {
   };
 
   return (
-    <Box sx={{ position: 'relative', minHeight: '100vh', pb: 8 }}>
+    <Box sx={{ position: 'relative', minHeight: '100vh', pb: 8, overflowY: 'auto' }} onScroll={handleScroll} ref={listRef}>
       <Typography variant="h4" component="h1" sx={{ fontWeight: 'bold', mb: 3, textAlign: 'center' }}>
         {t('Zeitkapsel')}
       </Typography>
@@ -152,6 +179,11 @@ export default function TimeCapsuleTab() {
             </motion.div>
           </Grid>
         ))}
+        {loading && (
+          <Grid item xs={12} sx={{ textAlign: 'center', py: 2 }}>
+            <CircularProgress size={20} />
+          </Grid>
+        )}
       </Grid>
 
       <Fab
