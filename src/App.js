@@ -72,6 +72,8 @@ import './i18n';
 import { useTranslation } from 'react-i18next';
 import SettingsDialog from './components/SettingsDialog';
 import urlBase64ToUint8Array from './utils/urlBase64ToUint8Array';
+import Game3DTab from './components/Game3DTab';
+import Game3D from './components/Game3D';
 
 function HideOnScroll(props) {
   const { children, setAppBarHidden } = props;
@@ -673,58 +675,68 @@ function App() {
       alert(t('PushBenachrichtigungenNichtUnterstuetzt'));
       return;
     }
-    console.log('[Push-DEBUG] Nach Push-API-Check, pushEnabled:', pushEnabled);
+
     try {
       const registration = await navigator.serviceWorker.ready;
       console.log('[Push-DEBUG] Service Worker ready:', registration);
+
       if (!pushEnabled) {
         console.log('[Push-DEBUG] Push wird aktiviert');
-        console.log('[Push-DEBUG] VAPID Public Key:', process.env.REACT_APP_VAPID_PUBLIC_KEY);
-        // Push-Subscription aktivieren
         const applicationServerKey = urlBase64ToUint8Array(process.env.REACT_APP_VAPID_PUBLIC_KEY);
-        console.log('[Push-DEBUG] applicationServerKey (Uint8Array):', applicationServerKey);
+        
         const subscription = await registration.pushManager.subscribe({
           userVisibleOnly: true,
           applicationServerKey
         });
+
         console.log('[Push-DEBUG] Neue Subscription:', subscription);
+        const subscriptionJson = subscription.toJSON();
+        console.log('[Push-DEBUG] Subscription als JSON:', subscriptionJson);
+
         // Subscription in Supabase speichern
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from('push_subscriptions')
           .upsert({
             user_id: user.id,
-            subscription: subscription.toJSON ? subscription.toJSON() : subscription,
+            subscription: subscriptionJson,
             created_at: new Date().toISOString()
+          }, {
+            onConflict: 'user_id'
           });
+
         if (error) {
           console.error('[Push-DEBUG] Fehler beim Speichern in Supabase:', error);
           throw error;
         }
+
+        console.log('[Push-DEBUG] Subscription erfolgreich in Supabase gespeichert:', data);
         setPushEnabled(true);
         alert(t('PushBenachrichtigungenAktiviert'));
       } else {
         // Push-Subscription deaktivieren
         console.log('[Push-DEBUG] Push wird deaktiviert');
         const subscription = await registration.pushManager.getSubscription();
-        console.log('[Push-DEBUG] Aktuelle Subscription zum Entfernen:', subscription);
+        
         if (subscription) {
           await subscription.unsubscribe();
-          // Subscription aus Supabase entfernen
+          
           const { error } = await supabase
             .from('push_subscriptions')
             .delete()
             .eq('user_id', user.id);
+
           if (error) {
             console.error('[Push-DEBUG] Fehler beim Löschen in Supabase:', error);
             throw error;
           }
+
           setPushEnabled(false);
           alert(t('PushBenachrichtigungenDeaktiviert'));
         }
       }
     } catch (error) {
       console.error('[Push-DEBUG] Fehler beim Umschalten der Push-Subscription:', error);
-      alert('Fehler beim Aktivieren/Deaktivieren der Push-Benachrichtigungen');
+      alert('Fehler beim Aktivieren/Deaktivieren der Push-Benachrichtigungen: ' + error.message);
     }
   };
 
@@ -883,6 +895,7 @@ function App() {
                   <Tab icon={<ListAltIcon />} label={t('Listen')} sx={{ minHeight: 48 }} />
                   <Tab icon={<SoupKitchenIcon />} label={t('Rezepte')} sx={{ minHeight: 48 }} />
                   <Tab icon={<StarIcon />} label={t('Inspiration')} sx={{ minHeight: 48 }} />
+                  <Tab icon={<SmartToyIcon />} label={t('3D Spiel')} sx={{ minHeight: 48 }} />
                 </Tabs>
               </AppBar>
             )}
@@ -910,12 +923,16 @@ function App() {
                   <TabPanel value={tabValue} index={6}>
                     <InspirationTab />
                   </TabPanel>
+                  <TabPanel value={tabValue} index={7}>
+                    <Game3DTab />
+                  </TabPanel>
                 </Paper>
               </Container>
             </Box>
             <Footer />
           </>
         } />
+        <Route path="/game3d" element={<Game3D />} />
       </Routes>
       
       {/* Dialoge */}
