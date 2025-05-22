@@ -17,6 +17,15 @@ import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
 import CloseIcon from '@mui/icons-material/Close';
 import { useTranslation } from 'react-i18next';
 import { sendPushNotification } from '../utils/pushNotifications';
+import SettingsIcon from '@mui/icons-material/Settings';
+import ChatSettingsDialog from './ChatSettingsDialog';
+import MenuIcon from '@mui/icons-material/Menu';
+import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
+import MicIcon from '@mui/icons-material/Mic';
+import AttachFileIcon from '@mui/icons-material/AttachFile';
+import StopIcon from '@mui/icons-material/Stop';
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import PauseIcon from '@mui/icons-material/Pause';
 
 const PAGE_SIZE = 20;
 
@@ -44,7 +53,63 @@ function resizeImage(file, maxWidth = 800, maxHeight = 800) {
   });
 }
 
-export default function ChatTab({ user }) {
+// Hilfsfunktion für Zeitformatierung mm:ss
+function formatDuration(secs) {
+  const m = Math.floor(secs / 60);
+  const s = Math.floor(secs % 60);
+  return `${m}:${s.toString().padStart(2, '0')}`;
+}
+
+// Hilfsfunktion zum Extrahieren der Waveform aus einer Audiodatei
+async function getAudioWaveform(audioUrl, sampleCount = 32) {
+  try {
+    const response = await fetch(audioUrl);
+    const arrayBuffer = await response.arrayBuffer();
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+    
+    // Für längere Audiodateien: Mehr Samples für bessere Auflösung
+    const duration = audioBuffer.duration;
+    const adjustedSampleCount = Math.min(128, Math.max(32, Math.floor(duration * 2)));
+    
+    const rawData = audioBuffer.getChannelData(0); // Mono
+    const blockSize = Math.floor(rawData.length / adjustedSampleCount);
+    const waveform = [];
+    
+    // Optimierte Berechnung der Waveform
+    for (let i = 0; i < adjustedSampleCount; i++) {
+      let sum = 0;
+      let max = 0;
+      const start = i * blockSize;
+      const end = Math.min(start + blockSize, rawData.length);
+      
+      for (let j = start; j < end; j++) {
+        const abs = Math.abs(rawData[j]);
+        sum += abs;
+        max = Math.max(max, abs);
+      }
+      
+      // Kombiniere Durchschnitt und Maximum für bessere Visualisierung
+      waveform.push((sum / blockSize + max) / 2);
+    }
+    
+    // Normalisiere die Waveform
+    const maxValue = Math.max(...waveform);
+    if (maxValue > 0) {
+      for (let i = 0; i < waveform.length; i++) {
+        waveform[i] = waveform[i] / maxValue;
+      }
+    }
+    
+    await audioCtx.close();
+    return waveform;
+  } catch (error) {
+    console.error('Fehler bei der Waveform-Berechnung:', error);
+    return null;
+  }
+}
+
+export default function ChatTab({ user, onChatDetailViewChange }) {
   const { t } = useTranslation();
   const [chats, setChats] = useState([]);
   const [selectedChat, setSelectedChat] = useState(null);
@@ -75,6 +140,19 @@ export default function ChatTab({ user }) {
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxImg, setLightboxImg] = useState(null);
   const [zoomContainer, setZoomContainer] = useState(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [mediaMenuOpen, setMediaMenuOpen] = useState(false);
+  const fileInputRef = useRef(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const [recordedDuration, setRecordedDuration] = useState(0);
+  const [audioBlob, setAudioBlob] = useState(null);
+  const [audioUrl, setAudioUrl] = useState(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const mediaRecorderRef = useRef(null);
+  const audioChunksRef = useRef([]);
+  const recordingTimerRef = useRef(null);
+  const audioPlayerRef = useRef(null);
 
   // Lade alle Usernamen und Avatare für Mapping
   useEffect(() => {
@@ -577,11 +655,192 @@ export default function ChatTab({ user }) {
     }
   };
 
+  // Effekt: Informiere Parent, ob Chat-Detailansicht aktiv ist (nur Mobile)
+  useEffect(() => {
+    if (!onChatDetailViewChange) return;
+    if (isMobile) {
+      onChatDetailViewChange(!!selectedChat);
+      // Verstecke die Tab-Leiste, wenn wir im Chat-Detail sind
+      if (selectedChat) {
+        document.body.style.overflow = 'hidden';
+        // Optional: Verstecke die Tab-Leiste
+        const tabBar = document.querySelector('.MuiBottomNavigation-root');
+        if (tabBar) {
+          tabBar.style.display = 'none';
+        }
+      } else {
+        document.body.style.overflow = '';
+        // Optional: Zeige die Tab-Leiste wieder an
+        const tabBar = document.querySelector('.MuiBottomNavigation-root');
+        if (tabBar) {
+          tabBar.style.display = 'flex';
+        }
+      }
+    }
+  }, [isMobile, selectedChat, onChatDetailViewChange]);
+
+  // Cleanup beim Unmount
+  useEffect(() => {
+    return () => {
+      document.body.style.overflow = '';
+      const tabBar = document.querySelector('.MuiBottomNavigation-root');
+      if (tabBar) {
+        tabBar.style.display = 'flex';
+      }
+    };
+  }, []);
+
+  // Funktion zum Starten der Aufnahme
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorderRef.current = new MediaRecorder(stream);
+      audioChunksRef.current = [];
+
+      mediaRecorderRef.current.ondataavailable = (event) => {
+        audioChunksRef.current.push(event.data);
+      };
+
+      mediaRecorderRef.current.onstop = () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        setAudioBlob(audioBlob);
+        const url = URL.createObjectURL(audioBlob);
+        setAudioUrl(url);
+
+        // Dauer auslesen mit Polling, bis ein sinnvoller Wert vorliegt
+        const tempAudio = new Audio(url);
+        const trySetDuration = () => {
+          if (
+            tempAudio.duration &&
+            isFinite(tempAudio.duration) &&
+            !isNaN(tempAudio.duration) &&
+            tempAudio.duration > 0
+          ) {
+            setRecordedDuration(Math.round(tempAudio.duration));
+          } else {
+            setTimeout(trySetDuration, 100);
+          }
+        };
+        tempAudio.onloadedmetadata = trySetDuration;
+
+        clearInterval(recordingTimerRef.current);
+      };
+
+      mediaRecorderRef.current.start();
+      setIsRecording(true);
+      setRecordingTime(0);
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingTime(prev => prev + 1);
+      }, 1000);
+    } catch (error) {
+      console.error('Fehler beim Starten der Aufnahme:', error);
+      alert('Fehler beim Zugriff auf das Mikrofon. Bitte überprüfen Sie die Berechtigungen.');
+    }
+  };
+
+  // Funktion zum Stoppen der Aufnahme
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
+      setIsRecording(false);
+    }
+  };
+
+  // Funktion zum Abspielen der Aufnahme
+  const togglePlayback = () => {
+    if (!audioPlayerRef.current) {
+      audioPlayerRef.current = new Audio(audioUrl);
+      audioPlayerRef.current.onended = () => setIsPlaying(false);
+    }
+
+    if (isPlaying) {
+      audioPlayerRef.current.pause();
+    } else {
+      audioPlayerRef.current.play();
+    }
+    setIsPlaying(!isPlaying);
+  };
+
+  // Funktion zum Senden der Sprachnachricht
+  const handleSendVoiceMessage = async () => {
+    if (!audioBlob || audioBlob.size === 0 || !selectedChat) {
+      alert('Die Aufnahme ist leer oder fehlgeschlagen!');
+      return;
+    }
+
+    // Audiodatei zu Supabase Storage hochladen
+    const fileName = `voice-message-${Date.now()}-${user.id}.webm`;
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from('voice-messages')
+      .upload(fileName, audioBlob, { contentType: 'audio/webm' });
+
+    if (uploadError) {
+      alert('Fehler beim Hochladen der Sprachnachricht: ' + uploadError.message);
+      return;
+    }
+
+    // Public URL generieren
+    const { data: publicUrlData } = supabase.storage
+      .from('voice-messages')
+      .getPublicUrl(fileName);
+    const audioUrlToSave = publicUrlData?.publicUrl;
+
+    // Waveform berechnen und als JSON speichern
+    let waveformArr = null;
+    try {
+      waveformArr = await getAudioWaveform(audioUrlToSave, 32);
+    } catch (e) {
+      waveformArr = null;
+    }
+
+    const partnerId = Number(selectedChat.user1_id === user.id ? selectedChat.user2_id : selectedChat.user1_id);
+
+    const { error } = await supabase.from('messages').insert([
+      {
+        chat_id: selectedChat.id,
+        sender_id: user.id,
+        receiver_id: partnerId,
+        content: 'Sprachnachricht',
+        audio_url: audioUrlToSave,
+        waveform: waveformArr ? JSON.stringify(waveformArr) : null
+      }
+    ]);
+
+    if (!error) {
+      setAudioBlob(null);
+      setAudioUrl(null);
+      setRecordedDuration(0);
+      setRecordingTime(0);
+      setMediaMenuOpen(false);
+      await sendPushNotification(
+        partnerId,
+        `${user.username} (${t('NeueSprachnachricht')})`,
+        'Sprachnachricht'
+      );
+    }
+  };
+
+  // Cleanup bei Komponenten-Unmount
+  useEffect(() => {
+    return () => {
+      if (recordingTimerRef.current) {
+        clearInterval(recordingTimerRef.current);
+      }
+      if (audioPlayerRef.current) {
+        audioPlayerRef.current.pause();
+      }
+      if (audioUrl) {
+        URL.revokeObjectURL(audioUrl);
+      }
+    };
+  }, []);
+
   // Mobile: Zeige nur Chat-Liste ODER Chat
   if (isMobile) {
     if (!selectedChat) {
       return (
-        <Box sx={{ pt: 0, pb: 8, px: 2, position: 'relative', minHeight: '100vh' }}>
+        <Box sx={{ pt: 0, pb: 8, px: 2, position: 'relative', minHeight: '100vh', bgcolor: '#fff', background: '#f5f5f5' }}>
           <Typography variant="h4" component="h1" sx={{ fontWeight: 'bold', mb: 3, textAlign: 'center' }}>{t('Chats')}</Typography>
           {/* Offene Anfragen */}
           {pendingRequests.length > 0 && (
@@ -699,304 +958,430 @@ export default function ChatTab({ user }) {
         </Box>
       );
     } else {
-      // Mobile: Chat-Vollansicht mit Zurück-Button
+      // Mobile: Chat-Vollansicht mit fixierter Eingabeleiste über dem Footer
+      const FOOTER_HEIGHT = 56; // ggf. anpassen!
       const partner = getChatPartnerObj(selectedChat);
       return (
-        <Box sx={{ p: 2, height: '100vh', display: 'flex', flexDirection: 'column' }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+        <>
+          {/* Header-Leiste mit Abstand nach unten */}
+          <Box sx={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            height: '56px',
+            zIndex: 1300,
+            bgcolor: '#fff', // Weiß!
+            borderBottom: '1px solid #eee',
+            display: 'flex',
+            alignItems: 'center',
+            px: 1,
+            m: 0,
+            p: 0,
+            background: '#fff'
+          }}>
             <IconButton onClick={() => setSelectedChat(null)}><ArrowBackIcon /></IconButton>
-            <Typography variant="h6" sx={{ ml: 1 }}>{t('ChatMit')} {partner.username}</Typography>
+            {/* Avatar und Username des Chatpartners */}
+            <Avatar src={partner.avatar_url} sx={{ width: 36, height: 36, ml: 1, mr: 1 }}>
+              {(!partner.avatar_url && partner.username) ? partner.username[0].toUpperCase() : ''}
+            </Avatar>
+            <Typography variant="h6" sx={{ fontWeight: 500 }}>{partner.username}</Typography>
+            <Box sx={{ flex: 1 }} />
+            <IconButton onClick={() => setSettingsOpen(true)} sx={{ ml: 1 }}>
+              <SettingsIcon />
+            </IconButton>
           </Box>
-          <Divider sx={{ mb: 2 }} />
-          {loadingMessages ? (
-            <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <CircularProgress />
-            </Box>
-          ) : (
-            <>
-              <Box
-                sx={{ flex: 1, overflowY: 'auto', mb: 2, bgcolor: '#fafafa', borderRadius: 1, p: 1 }}
-                ref={messagesListRef}
-                onScroll={handleScroll}
-              >
-                <List>
-                  {loadingMore && (
-                    <ListItem sx={{ justifyContent: 'center' }}>
-                      <CircularProgress size={20} />
-                    </ListItem>
-                  )}
-                  {uniqueMessages.map(msg => (
-                    <ListItem key={msg.id + '-' + (msg.created_at || '')} sx={{ justifyContent: msg.sender_id === user.id ? 'flex-end' : 'flex-start' }}>
-                      <Paper sx={{ p: 1.5, bgcolor: msg.sender_id === user.id ? '#ff4081' : '#eee', color: msg.sender_id === user.id ? 'white' : 'black', borderRadius: 2, maxWidth: '70%', position: 'relative' }}>
-                        {msg.image_url && (
-                          <Box sx={{ position: 'relative', minHeight: 100 }}>
-                            <Box 
-                              onClick={() => { 
-                                console.log('[Lightbox-DEBUG] Bild wurde geklickt (Mobile):', msg.image_url);
-                                const container = createZoomContainer();
-                                
-                                // Download-Button erstellen
-                                const downloadBtn = document.createElement('button');
-                                const icon = document.createElement('span');
-                                icon.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 0 24 24" width="24" fill="white"><path d="M0 0h24v24H0z" fill="none"/><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>';
-                                downloadBtn.appendChild(icon);
-                                downloadBtn.style.position = 'absolute';
-                                downloadBtn.style.top = '20px';
-                                downloadBtn.style.right = '20px';
-                                downloadBtn.style.background = 'rgba(255,255,255,0.15)';
-                                downloadBtn.style.border = 'none';
-                                downloadBtn.style.borderRadius = '50%';
-                                downloadBtn.style.width = '40px';
-                                downloadBtn.style.height = '40px';
-                                downloadBtn.style.cursor = 'pointer';
-                                downloadBtn.style.zIndex = '10000';
-                                downloadBtn.style.display = 'flex';
-                                downloadBtn.style.alignItems = 'center';
-                                downloadBtn.style.justifyContent = 'center';
-                                downloadBtn.style.transition = 'background-color 0.2s';
-                                downloadBtn.onmouseover = () => downloadBtn.style.background = 'rgba(255,255,255,0.25)';
-                                downloadBtn.onmouseout = () => downloadBtn.style.background = 'rgba(255,255,255,0.15)';
-                                downloadBtn.onclick = async (e) => {
-                                  e.stopPropagation();
-                                  try {
-                                    await saveImage(msg.image_url);
-                                  } catch (error) {
-                                    console.error('Fehler beim Klick auf Download-Button:', error);
-                                  }
-                                };
-                                
-                                const img = new Image();
-                                img.src = msg.image_url;
-                                img.style.maxWidth = '100%';
-                                img.style.maxHeight = '100%';
-                                img.style.objectFit = 'contain';
-                                img.style.padding = '20px';
-                                img.style.borderRadius = '8px';
-                                img.onclick = (e) => {
-                                  e.stopPropagation();
-                                  document.body.removeChild(container);
-                                  setZoomContainer(null);
-                                };
-                                
-                                // Escape-Taste zum Schließen
-                                const handleEscape = (e) => {
-                                  if (e.key === 'Escape') {
-                                    document.body.removeChild(container);
-                                    setZoomContainer(null);
-                                    document.removeEventListener('keydown', handleEscape);
-                                  }
-                                };
-                                document.addEventListener('keydown', handleEscape);
-                                
-                                container.appendChild(img);
-                                container.appendChild(downloadBtn);
-                              }} 
-                              sx={{ cursor: 'zoom-in', width: '100%', height: '100%', display: 'inline-block' }}
-                            >
-                              <ChatImageWithLoader src={msg.image_url} alt="Bild" style={chatImageStyle} />
-                            </Box>
+          <ChatSettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+          {/* Chat-Fenster darunter */}
+          <Box
+            sx={{ 
+              position: 'fixed',
+              top: '56px', // Direkt unter dem Header
+              left: 0,
+              right: 0,
+              bottom:'0px',
+              display: 'flex',
+              flexDirection: 'column',
+              bgcolor: '#fff', // Weiß!
+              zIndex: 1200,
+              background: '#fff'
+            }}
+          >
+            {/* Nachrichtenbereich */}
+            <Box
+              sx={{ 
+                flex: 1, 
+                overflowY: 'auto', 
+                pb: mediaMenuOpen ? '92px' : '56px', // Höhe der Eingabeleiste bzw. Menü
+                pt: '8px',
+                px: 1
+              }}
+              ref={messagesListRef}
+              onScroll={handleScroll}
+            >
+              <List>
+                {loadingMore && (
+                  <ListItem sx={{ justifyContent: 'center' }}>
+                    <CircularProgress size={20} />
+                  </ListItem>
+                )}
+                {uniqueMessages.map(msg => (
+                  <ListItem key={msg.id + '-' + (msg.created_at || '')} sx={{ justifyContent: msg.sender_id === user.id ? 'flex-end' : 'flex-start' }}>
+                    <Paper sx={{ p: 1.5, bgcolor: msg.sender_id === user.id ? '#ff4081' : '#eee', color: msg.sender_id === user.id ? 'white' : 'black', borderRadius: 2, maxWidth: '70%', position: 'relative' }}>
+                      {msg.image_url && (
+                        <Box sx={{ position: 'relative', minHeight: 100 }}>
+                          <Box 
+                            onClick={() => { 
+                              console.log('[Lightbox-DEBUG] Bild wurde geklickt:', msg.image_url);
+                              setLightboxImg(msg.image_url); 
+                              setLightboxOpen(true); 
+                            }} 
+                            sx={{ cursor: 'zoom-in', width: '100%', height: '100%', display: 'inline-block' }}
+                            tabIndex={0}
+                            role="button"
+                            aria-label="Bild vergrößern"
+                          >
+                            <ChatImageWithLoader src={msg.image_url} alt="Bild" style={chatImageStyle} />
                           </Box>
-                        )}
-                        {msg.content && <Typography variant="body2">{msg.content}</Typography>}
-                        <Box sx={{ display: 'flex', alignItems: 'center', mt: 0.5 }}>
-                          <Typography variant="caption" sx={{ opacity: 0.7, mr: 1 }}>{msg.sender_id === user.id ? t('Du') : userMap[msg.sender_id]?.username || `User #${msg.sender_id}`}</Typography>
-                          {msg.sender_id === user.id && (
-                            msg.is_read ? (
-                              <VisibilityIcon fontSize="small" sx={{ ml: 0.5, color: 'rgba(255,255,255,0.7)' }} />
-                            ) : (
-                              <DoneIcon fontSize="small" sx={{ ml: 0.5, color: 'rgba(255,255,255,0.7)' }} />
-                            )
-                          )}
                         </Box>
-                      </Paper>
-                    </ListItem>
-                  ))}
-                  <div ref={messagesEndRef} />
-                </List>
-              </Box>
-              <Box sx={{ display: 'flex', gap: 1 }}>
-                <IconButton component="label">
-                  <ImageIcon />
-                  <input type="file" accept="image/*" hidden onChange={handleImageChange} />
-                </IconButton>
-                <TextField
-                  value={newMessage}
-                  onChange={e => setNewMessage(e.target.value)}
-                  fullWidth
-                  placeholder={t('NachrichtSchreiben')}
-                  onKeyDown={e => { if (e.key === 'Enter') handleSend(); }}
-                />
-                <Button onClick={handleSend} variant="contained">Senden</Button>
-              </Box>
-              {imageToSend && (
-                <Box sx={{ mt: 1, mb: 1 }}>
-                  <img src={imageToSend} alt="Vorschau" style={{ maxWidth: 120, maxHeight: 120, borderRadius: 8 }} />
-                  <Button size="small" onClick={() => setImageToSend(null)}>{t('Entfernen')}</Button>
+                      )}
+                      {msg.content && <Typography variant="body2">{msg.content}</Typography>}
+                      {msg.audio_url && (
+                        <VoiceMessageBubble
+                          url={msg.audio_url}
+                          duration={msg.duration}
+                          isOwn={msg.sender_id === user.id}
+                          waveform={msg.waveform}
+                        />
+                      )}
+                      <Box sx={{ display: 'flex', alignItems: 'center', mt: 0.5 }}>
+                        <Typography variant="caption" sx={{ opacity: 0.7, mr: 1 }}>{msg.sender_id === user.id ? t('Du') : userMap[msg.sender_id]?.username || `User #${msg.sender_id}`}</Typography>
+                        {msg.sender_id === user.id && (
+                          msg.is_read ? (
+                            <VisibilityIcon fontSize="small" sx={{ ml: 0.5, color: 'rgba(255,255,255,0.7)' }} />
+                          ) : (
+                            <DoneIcon fontSize="small" sx={{ ml: 0.5, color: 'rgba(255,255,255,0.7)' }} />
+                          )
+                        )}
+                      </Box>
+                    </Paper>
+                  </ListItem>
+                ))}
+                <div ref={messagesEndRef} />
+              </List>
+            </Box>
+            {/* Fixierte Eingabezeile über dem Footer */}
+            <Box sx={{ position: 'fixed', left: 0, right: 0, bottom: mediaMenuOpen ? '92px' : 0, zIndex: 30, bgcolor: '#fff', borderTop: '1px solid #eee', p: 1, display: 'flex', gap: 1, alignItems: 'center', transition: 'bottom 0.2s' }}>
+              <IconButton onClick={() => setMediaMenuOpen(open => !open)} sx={{ p: 1 }}>
+                <MenuIcon />
+              </IconButton>
+              <TextField
+                value={newMessage}
+                onChange={e => setNewMessage(e.target.value)}
+                fullWidth
+                placeholder={t('NachrichtSchreiben')}
+                onKeyDown={e => { if (e.key === 'Enter') handleSend(); }}
+                size="small"
+                sx={{ '& .MuiOutlinedInput-root': { height: '40px' }, mr: 0 }}
+              />
+              <Button 
+                onClick={handleSend} 
+                variant="contained"
+                sx={{ minWidth: '60px', height: '40px', flexShrink: 0, px: 1.5, mr: 1 }}
+              >
+                Senden
+              </Button>
+            </Box>
+            {/* Medien-Auswahlmenü unter der Eingabeleiste */}
+            {mediaMenuOpen && (
+              <Box sx={{ 
+                position: 'fixed', 
+                left: 0, 
+                right: 0, 
+                bottom: 0, 
+                zIndex: 40, 
+                bgcolor: '#f5f5f5', 
+                borderTop: '1px solid #eee', 
+                p: 2, 
+                display: 'flex', 
+                flexDirection: 'column',
+                gap: 2,
+                transition: 'all 0.3s ease'
+              }}>
+                {/* Hauptbuttons */}
+                <Box sx={{ 
+                  display: 'flex', 
+                  justifyContent: 'space-around', 
+                  alignItems: 'center',
+                  width: '100%'
+                }}>
+                  <IconButton size="large" sx={{ mx: 2, bgcolor: '#fff', boxShadow: 1 }} onClick={() => fileInputRef.current && fileInputRef.current.click()}>
+                    <PhotoCameraIcon fontSize="large" />
+                    <input ref={fileInputRef} type="file" accept="image/*" hidden onChange={e => { handleImageChange(e); setMediaMenuOpen(false); }} />
+                  </IconButton>
+                  <IconButton 
+                    size="large" 
+                    sx={{ 
+                      mx: 2, 
+                      bgcolor: isRecording ? '#ff4081' : '#fff', 
+                      boxShadow: 1,
+                      color: isRecording ? '#fff' : 'inherit',
+                      width: 64,
+                      height: 64
+                    }} 
+                    onClick={isRecording ? stopRecording : startRecording}
+                  >
+                    {isRecording ? <StopIcon fontSize="large" /> : <MicIcon fontSize="large" />}
+                  </IconButton>
+                  <IconButton size="large" sx={{ mx: 2, bgcolor: '#fff', boxShadow: 1 }} onClick={() => setMediaMenuOpen(false)}>
+                    <AttachFileIcon fontSize="large" />
+                  </IconButton>
                 </Box>
+
+                {/* Aufnahme-Vorschau */}
+                {(isRecording || audioUrl) && (
+                  <Box sx={{ 
+                    bgcolor: '#fff', 
+                    borderRadius: 2, 
+                    p: 2, 
+                    display: 'flex', 
+                    flexDirection: 'column',
+                    gap: 1,
+                    boxShadow: 1
+                  }}>
+                    {isRecording ? (
+                      <>
+                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
+                          <FiberManualRecordIcon sx={{ color: '#ff4081', animation: 'pulse 1s infinite' }} />
+                          <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                            Aufnahme läuft...
+                          </Typography>
+                        </Box>
+                        <Typography variant="h6" sx={{ textAlign: 'center', fontFamily: 'monospace' }}>
+                          {Math.floor(recordingTime / 60)}:{(recordingTime % 60).toString().padStart(2, '0')}
+                        </Typography>
+                      </>
+                    ) : (
+                      <>
+                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <IconButton onClick={togglePlayback} size="small">
+                              {isPlaying ? <PauseIcon /> : <PlayArrowIcon />}
+                            </IconButton>
+                            <Typography variant="body2">
+                              {Math.floor(recordedDuration / 60)}:{(recordedDuration % 60).toString().padStart(2, '0')}
+                            </Typography>
+                          </Box>
+                          <Box sx={{ display: 'flex', gap: 1 }}>
+                            <Button 
+                              size="small" 
+                              variant="contained" 
+                              color="primary"
+                              onClick={handleSendVoiceMessage}
+                            >
+                              {t('Senden')}
+                            </Button>
+                            <Button 
+                              size="small" 
+                              variant="outlined" 
+                              color="error"
+                              onClick={() => {
+                                setAudioBlob(null);
+                                setAudioUrl(null);
+                                setRecordedDuration(0);
+                                setRecordingTime(0);
+                              }}
+                            >
+                              {t('Entfernen')}
+                            </Button>
+                          </Box>
+                        </Box>
+                      </>
+                    )}
+                  </Box>
+                )}
+              </Box>
+            )}
+          </Box>
+          <Dialog open={lightboxOpen} onClose={() => setLightboxOpen(false)} maxWidth="md" fullWidth>
+            <DialogContent sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', p: 0, bgcolor: '#222' }}>
+              <IconButton onClick={() => setLightboxOpen(false)} sx={{ position: 'absolute', top: 8, right: 8, color: '#fff', zIndex: 10 }}>
+                <CloseIcon />
+              </IconButton>
+              {lightboxImg && (
+                <img
+                  src={lightboxImg}
+                  alt="Bild groß"
+                  style={{ maxWidth: '90vw', maxHeight: '90vh', borderRadius: 8, boxShadow: '0 4px 32px #000a' }}
+                />
               )}
-            </>
-          )}
-        </Box>
+            </DialogContent>
+          </Dialog>
+        </>
       );
     }
   }
 
   // Desktop: Chat-Liste links, Chat rechts
   return (
-    <Box sx={{ display: 'flex', height: '70vh', maxWidth: 1000, mx: 'auto', mt: 2, bgcolor: '#fff', borderRadius: 2, boxShadow: 2, position: 'relative', minHeight: '100vh', pb: 8 }}>
-      {/* Chat-Liste */}
-      <Box sx={{ width: 300, borderRight: '1px solid #eee', p: 2, overflowY: 'auto' }}>
-        <Typography variant="h4" component="h1" sx={{ fontWeight: 'bold', mb: 3, textAlign: 'center' }}>{t('Chats')}</Typography>
-        {/* Offene Anfragen */}
-        {pendingRequests.length > 0 && (
-          <Box sx={{ mb: 3 }}>
-            <Typography variant="h6">{t('OffeneChatAnfragen')}</Typography>
-            <List>
-              {pendingRequests.map(req => {
-                const partner = getChatPartnerObj(req);
-                return (
-                  <ListItem key={req.id} sx={{ alignItems: 'flex-start', display: 'flex' }}>
-                    <Avatar src={partner.avatar_url} sx={{ width: 32, height: 32, mr: 1, mt: 0.5 }} />
-                    <Box sx={{ flex: 1, minWidth: 0 }}>
-                      <Typography>
-                        {t('Von')} <b>{partner.username}</b>
-                      </Typography>
-                      <ButtonGroup variant="outlined" sx={{ mt: 0.5 }}>
-                        <Button color="primary" size="small" onClick={() => handleRequestAction(req.id, 'accept')}>{t('Annehmen')}</Button>
-                        <Button color="secondary" size="small" onClick={() => handleRequestAction(req.id, 'declined')}>{t('Ablehnen')}</Button>
-                      </ButtonGroup>
-                    </Box>
-                  </ListItem>
-                );
-              })}
-            </List>
-          </Box>
-        )}
-        <Typography variant="h6">{t('DeineChats')}</Typography>
-        <List>
-          {chats.filter(c => c.status === 'accepted').map(chat => {
-            const partner = getChatPartnerObj(chat);
-            const unread = messages.some(m => m.chat_id === chat.id && m.receiver_id === user.id && !m.is_read);
-            return (
-              <Card key={chat.id} sx={{ mb: 2, borderRadius: 2, boxShadow: 1, bgcolor: '#fff', p: 0 }}>
-                <CardActionArea onClick={() => setSelectedChat(chat)}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', p: 2, justifyContent: 'space-between' }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                      <Avatar src={partner.avatar_url} sx={{ width: 36, height: 36, mr: 2 }} />
-                      <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>{partner.username}</Typography>
-                    </Box>
-                    <Badge badgeContent={unreadCounts[chat.id] || 0} color="error" showZero sx={{ mr: 1.5 }} />
-                  </Box>
-                </CardActionArea>
-              </Card>
-            );
-          })}
-        </List>
-      </Box>
-      {/* Chat-Fenster */}
-      <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', p: 2, minWidth: 0 }}>
-        {selectedChat ? (
-          loadingMessages ? (
-            <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <CircularProgress />
+    <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-start', minHeight: '100vh', bgcolor: '#fff' }}>
+      <Box sx={{ display: 'flex', height: '70vh', maxWidth: 1000, width: '100%', mx: 'auto', mt: 2, bgcolor: '#fff', borderRadius: 2, boxShadow: 2, position: 'relative', minHeight: '100vh', pb: 8 }}>
+        {/* Chat-Liste */}
+        <Box sx={{ width: 300, borderRight: '1px solid #eee', p: 2, overflowY: 'auto' }}>
+          <Typography variant="h4" component="h1" sx={{ fontWeight: 'bold', mb: 3, textAlign: 'center' }}>{t('Chats')}</Typography>
+          {/* Offene Anfragen */}
+          {pendingRequests.length > 0 && (
+            <Box sx={{ mb: 3 }}>
+              <Typography variant="h6">{t('OffeneChatAnfragen')}</Typography>
+              <List>
+                {pendingRequests.map(req => {
+                  const partner = getChatPartnerObj(req);
+                  return (
+                    <ListItem key={req.id} sx={{ alignItems: 'flex-start', display: 'flex' }}>
+                      <Avatar src={partner.avatar_url} sx={{ width: 32, height: 32, mr: 1, mt: 0.5 }} />
+                      <Box sx={{ flex: 1, minWidth: 0 }}>
+                        <Typography>
+                          {t('Von')} <b>{partner.username}</b>
+                        </Typography>
+                        <ButtonGroup variant="outlined" sx={{ mt: 0.5 }}>
+                          <Button color="primary" size="small" onClick={() => handleRequestAction(req.id, 'accept')}>{t('Annehmen')}</Button>
+                          <Button color="secondary" size="small" onClick={() => handleRequestAction(req.id, 'declined')}>{t('Ablehnen')}</Button>
+                        </ButtonGroup>
+                      </Box>
+                    </ListItem>
+                  );
+                })}
+              </List>
             </Box>
-          ) : (
-            <>
-              <Typography variant="h6" gutterBottom>
-                {t('ChatMit')} {getChatPartnerObj(selectedChat).username}
-              </Typography>
-              <Divider sx={{ mb: 2 }} />
-              <Box
-                sx={{ flex: 1, overflowY: 'auto', mb: 2, bgcolor: '#fafafa', borderRadius: 1, p: 1 }}
-                ref={messagesListRef}
-                onScroll={handleScroll}
-              >
-                <List>
-                  {loadingMore && (
-                    <ListItem sx={{ justifyContent: 'center' }}>
-                      <CircularProgress size={20} />
-                    </ListItem>
-                  )}
-                  {uniqueMessages.map(msg => (
-                    <ListItem key={msg.id + '-' + (msg.created_at || '')} sx={{ justifyContent: msg.sender_id === user.id ? 'flex-end' : 'flex-start' }}>
-                      <Paper sx={{ p: 1.5, bgcolor: msg.sender_id === user.id ? '#ff4081' : '#eee', color: msg.sender_id === user.id ? 'white' : 'black', borderRadius: 2, maxWidth: '70%', position: 'relative' }}>
-                        {msg.image_url && (
-                          <Box sx={{ position: 'relative', minHeight: 100 }}>
-                            <Box 
-                              onClick={() => { 
-                                console.log('[Lightbox-DEBUG] Bild wurde geklickt:', msg.image_url);
-                                setLightboxImg(msg.image_url); 
-                                setLightboxOpen(true); 
-                              }} 
-                              sx={{ cursor: 'zoom-in', width: '100%', height: '100%', display: 'inline-block' }}
-                              tabIndex={0}
-                              role="button"
-                              aria-label="Bild vergrößern"
-                            >
-                              <ChatImageWithLoader src={msg.image_url} alt="Bild" style={chatImageStyle} />
-                            </Box>
-                          </Box>
-                        )}
-                        {msg.content && <Typography variant="body2">{msg.content}</Typography>}
-                        <Box sx={{ display: 'flex', alignItems: 'center', mt: 0.5 }}>
-                          <Typography variant="caption" sx={{ opacity: 0.7, mr: 1 }}>{msg.sender_id === user.id ? t('Du') : userMap[msg.sender_id]?.username || `User #${msg.sender_id}`}</Typography>
-                          {msg.sender_id === user.id && (
-                            msg.is_read ? (
-                              <VisibilityIcon fontSize="small" sx={{ ml: 0.5, color: 'rgba(255,255,255,0.7)' }} />
-                            ) : (
-                              <DoneIcon fontSize="small" sx={{ ml: 0.5, color: 'rgba(255,255,255,0.7)' }} />
-                            )
-                          )}
-                        </Box>
-                      </Paper>
-                    </ListItem>
-                  ))}
-                  <div ref={messagesEndRef} />
-                </List>
-              </Box>
-              <Box sx={{ display: 'flex', gap: 1 }}>
-                <IconButton component="label">
-                  <ImageIcon />
-                  <input type="file" accept="image/*" hidden onChange={handleImageChange} />
-                </IconButton>
-                <TextField
-                  value={newMessage}
-                  onChange={e => setNewMessage(e.target.value)}
-                  fullWidth
-                  placeholder={t('NachrichtSchreiben')}
-                  onKeyDown={e => { if (e.key === 'Enter') handleSend(); }}
-                />
-                <Button onClick={handleSend} variant="contained">Senden</Button>
-              </Box>
-              {imageToSend && (
-                <Box sx={{ mt: 1, mb: 1 }}>
-                  <img src={imageToSend} alt="Vorschau" style={{ maxWidth: 120, maxHeight: 120, borderRadius: 8 }} />
-                  <Button size="small" onClick={() => setImageToSend(null)}>{t('Entfernen')}</Button>
-                </Box>
-              )}
-            </>
-          )
-        ) : (
-          <Box sx={{ textAlign: 'center', color: '#aaa', mt: 10 }}>
-            <Typography>{t('WaehleChatOderStarteNeuen')}</Typography>
-          </Box>
-        )}
-      </Box>
-      {/* Lightbox-Dialog für große Bildanzeige */}
-      <Dialog open={lightboxOpen} onClose={() => setLightboxOpen(false)} maxWidth="md" fullWidth>
-        <DialogContent sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', p: 0, bgcolor: '#222' }}>
-          <IconButton onClick={() => setLightboxOpen(false)} sx={{ position: 'absolute', top: 8, right: 8, color: '#fff', zIndex: 10 }}>
-            <CloseIcon />
-          </IconButton>
-          {lightboxImg && (
-            <img
-              src={lightboxImg}
-              alt="Bild groß"
-              style={{ maxWidth: '90vw', maxHeight: '90vh', borderRadius: 8, boxShadow: '0 4px 32px #000a' }}
-            />
           )}
-        </DialogContent>
-      </Dialog>
+          <Typography variant="h6">{t('DeineChats')}</Typography>
+          <List>
+            {chats.filter(c => c.status === 'accepted').map(chat => {
+              const partner = getChatPartnerObj(chat);
+              const unread = messages.some(m => m.chat_id === chat.id && m.receiver_id === user.id && !m.is_read);
+              return (
+                <Card key={chat.id} sx={{ mb: 2, borderRadius: 2, boxShadow: 1, bgcolor: '#fff', p: 0 }}>
+                  <CardActionArea onClick={() => setSelectedChat(chat)}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', p: 2, justifyContent: 'space-between' }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        <Avatar src={partner.avatar_url} sx={{ width: 36, height: 36, mr: 2 }} />
+                        <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>{partner.username}</Typography>
+                      </Box>
+                      <Badge badgeContent={unreadCounts[chat.id] || 0} color="error" showZero sx={{ mr: 1.5 }} />
+                    </Box>
+                  </CardActionArea>
+                </Card>
+              );
+            })}
+          </List>
+        </Box>
+        {/* Chat-Fenster */}
+        <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', p: 2, minWidth: 0 }}>
+          {selectedChat ? (
+            loadingMessages ? (
+              <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <CircularProgress />
+              </Box>
+            ) : (
+              <>
+                <Typography variant="h6" gutterBottom>
+                  {t('ChatMit')} {getChatPartnerObj(selectedChat).username}
+                </Typography>
+                <Divider sx={{ mb: 2 }} />
+                <Box
+                  sx={{ flex: 1, overflowY: 'auto', mb: 2, bgcolor: '#fafafa', borderRadius: 1, p: 1 }}
+                  ref={messagesListRef}
+                  onScroll={handleScroll}
+                >
+                  <List>
+                    {loadingMore && (
+                      <ListItem sx={{ justifyContent: 'center' }}>
+                        <CircularProgress size={20} />
+                      </ListItem>
+                    )}
+                    {uniqueMessages.map(msg => (
+                      <ListItem key={msg.id + '-' + (msg.created_at || '')} sx={{ justifyContent: msg.sender_id === user.id ? 'flex-end' : 'flex-start' }}>
+                        <Paper sx={{ p: 1.5, bgcolor: msg.sender_id === user.id ? '#ff4081' : '#eee', color: msg.sender_id === user.id ? 'white' : 'black', borderRadius: 2, maxWidth: '70%', position: 'relative' }}>
+                          {msg.image_url && (
+                            <Box sx={{ position: 'relative', minHeight: 100 }}>
+                              <Box 
+                                onClick={() => { 
+                                  console.log('[Lightbox-DEBUG] Bild wurde geklickt:', msg.image_url);
+                                  setLightboxImg(msg.image_url); 
+                                  setLightboxOpen(true); 
+                                }} 
+                                sx={{ cursor: 'zoom-in', width: '100%', height: '100%', display: 'inline-block' }}
+                                tabIndex={0}
+                                role="button"
+                                aria-label="Bild vergrößern"
+                              >
+                                <ChatImageWithLoader src={msg.image_url} alt="Bild" style={chatImageStyle} />
+                              </Box>
+                            </Box>
+                          )}
+                          {msg.content && <Typography variant="body2">{msg.content}</Typography>}
+                          {msg.audio_url && (
+                            <VoiceMessageBubble
+                              url={msg.audio_url}
+                              duration={msg.duration}
+                              isOwn={msg.sender_id === user.id}
+                              waveform={msg.waveform}
+                            />
+                          )}
+                          <Box sx={{ display: 'flex', alignItems: 'center', mt: 0.5 }}>
+                            <Typography variant="caption" sx={{ opacity: 0.7, mr: 1 }}>{msg.sender_id === user.id ? t('Du') : userMap[msg.sender_id]?.username || `User #${msg.sender_id}`}</Typography>
+                            {msg.sender_id === user.id && (
+                              msg.is_read ? (
+                                <VisibilityIcon fontSize="small" sx={{ ml: 0.5, color: 'rgba(255,255,255,0.7)' }} />
+                              ) : (
+                                <DoneIcon fontSize="small" sx={{ ml: 0.5, color: 'rgba(255,255,255,0.7)' }} />
+                              )
+                            )}
+                          </Box>
+                        </Paper>
+                      </ListItem>
+                    ))}
+                    <div ref={messagesEndRef} />
+                  </List>
+                </Box>
+                <Box sx={{ display: 'flex', gap: 1 }}>
+                  <IconButton component="label">
+                    <ImageIcon />
+                    <input type="file" accept="image/*" hidden onChange={handleImageChange} />
+                  </IconButton>
+                  <TextField
+                    value={newMessage}
+                    onChange={e => setNewMessage(e.target.value)}
+                    fullWidth
+                    placeholder={t('NachrichtSchreiben')}
+                    onKeyDown={e => { if (e.key === 'Enter') handleSend(); }}
+                  />
+                  <Button onClick={handleSend} variant="contained">Senden</Button>
+                </Box>
+              </>
+            )
+          ) : (
+            <Box sx={{ textAlign: 'center', color: '#aaa', mt: 10 }}>
+              <Typography>{t('WaehleChatOderStarteNeuen')}</Typography>
+            </Box>
+          )}
+        </Box>
+        {/* Lightbox-Dialog für große Bildanzeige */}
+        <Dialog open={lightboxOpen} onClose={() => setLightboxOpen(false)} maxWidth="md" fullWidth>
+          <DialogContent sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', p: 0, bgcolor: '#222' }}>
+            <IconButton onClick={() => setLightboxOpen(false)} sx={{ position: 'absolute', top: 8, right: 8, color: '#fff', zIndex: 10 }}>
+              <CloseIcon />
+            </IconButton>
+            {lightboxImg && (
+              <img
+                src={lightboxImg}
+                alt="Bild groß"
+                style={{ maxWidth: '90vw', maxHeight: '90vh', borderRadius: 8, boxShadow: '0 4px 32px #000a' }}
+              />
+            )}
+          </DialogContent>
+        </Dialog>
+      </Box>
     </Box>
   );
 }
@@ -1016,4 +1401,355 @@ function ChatImageWithLoader({ src, alt, style }) {
       />
     </Box>
   );
-} 
+}
+
+function AudioWaveform({ waveform, color = "#fff", progress = 0, onScrub, isScrubbing }) {
+  const svgRef = React.useRef();
+  const isDraggingRef = React.useRef(false);
+  const width = waveform.length * 10;
+  const height = 64;
+  const barWidth = 8;
+  const barRadius = 4;
+  const progressBarWidth = 8;
+  const progressBarRadius = 4;
+
+  // Berechne die Position relativ zum SVG-Element
+  const calculateProgress = React.useCallback((clientX) => {
+    if (!svgRef.current) return 0;
+    const rect = svgRef.current.getBoundingClientRect();
+    const x = clientX - rect.left;
+    return Math.max(0, Math.min(1, x / rect.width));
+  }, []);
+
+  // Verbesserte Pointer-Move-Handler
+  const handlePointerMove = React.useCallback((e) => {
+    if (!isDraggingRef.current || !onScrub) return;
+    e.preventDefault();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const newProgress = calculateProgress(clientX);
+    onScrub(newProgress, 'move');
+  }, [onScrub, calculateProgress]);
+
+  // Verbesserter Pointer-Down-Handler
+  const handlePointerDown = React.useCallback((e) => {
+    if (!onScrub) return;
+    e.preventDefault();
+    isDraggingRef.current = true;
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const newProgress = calculateProgress(clientX);
+    onScrub(newProgress, 'start');
+
+    // Event-Listener hinzufügen
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerUp);
+    window.addEventListener('touchmove', handlePointerMove, { passive: false });
+    window.addEventListener('touchend', handlePointerUp);
+  }, [onScrub, calculateProgress]);
+
+  // Verbesserter Pointer-Up-Handler
+  const handlePointerUp = React.useCallback((e) => {
+    if (!isDraggingRef.current) return;
+    e.preventDefault();
+    isDraggingRef.current = false;
+    
+    // Event-Listener entfernen
+    window.removeEventListener('pointermove', handlePointerMove);
+    window.removeEventListener('pointerup', handlePointerUp);
+    window.removeEventListener('touchmove', handlePointerMove);
+    window.removeEventListener('touchend', handlePointerUp);
+    
+    onScrub(null, 'end');
+  }, [onScrub, handlePointerMove]);
+
+  // Cleanup bei Unmount
+  React.useEffect(() => {
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerUp);
+      window.removeEventListener('touchmove', handlePointerMove);
+      window.removeEventListener('touchend', handlePointerUp);
+    };
+  }, [handlePointerMove, handlePointerUp]);
+
+  // Smoothes Bewegen: CSS-Transition für den Balken
+  const progressBarX = Math.max(0, Math.min(width - progressBarWidth, progress * width - progressBarWidth / 2));
+
+  return (
+    <svg
+      ref={svgRef}
+      width="100%"
+      height={height}
+      viewBox={`0 0 ${width} ${height}`}
+      style={{ 
+        touchAction: 'none', 
+        cursor: onScrub ? 'pointer' : 'default', 
+        userSelect: 'none',
+        WebkitUserSelect: 'none',
+        WebkitTouchCallout: 'none'
+      }}
+      onPointerDown={handlePointerDown}
+      onTouchStart={handlePointerDown}
+      role="slider"
+      aria-label="Audio Position"
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={Math.round(progress * 100)}
+      tabIndex={0}
+      onKeyDown={(e) => {
+        const step = 0.01; // 5% Schrittweite
+        if (e.key === 'ArrowLeft') {
+          onScrub(Math.max(0, progress - step), 'move');
+        } else if (e.key === 'ArrowRight') {
+          onScrub(Math.min(1, progress + step), 'move');
+        }
+      }}
+    >
+      {waveform.map((v, i) => (
+        <rect
+          key={i}
+          x={i * 10}
+          y={64 - (v / Math.max(...waveform, 0.01)) * 54}
+          width={barWidth}
+          height={(v / Math.max(...waveform, 0.01)) * 54}
+          fill={color}
+          rx={barRadius}
+        />
+      ))}
+      {/* Fortschrittsbalken */}
+      <rect
+        x={0}
+        y={0}
+        width={progressBarWidth}
+        height={height}
+        fill="#fff"
+        opacity={isScrubbing ? 0.95 : 0.8}
+        rx={progressBarRadius}
+        style={{ 
+          pointerEvents: 'none', 
+          transform: `translateX(${progressBarX}px)`,
+          transition: isScrubbing ? 'none' : 'transform 0.15s cubic-bezier(.4,1.3,.6,1)'
+        }}
+      />
+    </svg>
+  );
+}
+
+function VoiceMessageBubble({ url, duration, isOwn, waveform: waveformProp }) {
+  const [isPlaying, setIsPlaying] = React.useState(false);
+  const [audio, setAudio] = React.useState(null);
+  const [currentTime, setCurrentTime] = React.useState(0);
+  const [waveform, setWaveform] = React.useState(null);
+  const [waveformError, setWaveformError] = React.useState(null);
+  const [isScrubbing, setIsScrubbing] = React.useState(false);
+  const [scrubTime, setScrubTime] = React.useState(null);
+  const [isLoading, setIsLoading] = React.useState(true);
+  const durationToShow = duration || (audio ? audio.duration : 0);
+  const audioRef = React.useRef(null);
+  const audioContextRef = React.useRef(null);
+
+  // Initialisiere Audio-Objekt
+  React.useEffect(() => {
+    if (!url) return;
+    
+    const newAudio = new window.Audio(url);
+    audioRef.current = newAudio;
+    
+    // Setze Preload auf "auto" für bessere Performance
+    newAudio.preload = "auto";
+    
+    newAudio.onended = () => {
+      setIsPlaying(false);
+      setCurrentTime(0);
+    };
+    
+    newAudio.ontimeupdate = () => {
+      setCurrentTime(newAudio.currentTime);
+    };
+
+    // Lade-Event-Handler
+    newAudio.onloadeddata = () => {
+      setIsLoading(false);
+    };
+
+    setAudio(newAudio);
+
+    return () => {
+      if (newAudio) {
+        newAudio.pause();
+        newAudio.currentTime = 0;
+      }
+    };
+  }, [url]);
+
+  // Waveform-Berechnung
+  React.useEffect(() => {
+    let cancelled = false;
+    if (waveformProp) {
+      if (Array.isArray(waveformProp)) {
+        setWaveform(waveformProp);
+        setIsLoading(false);
+      } else if (typeof waveformProp === 'string') {
+        try {
+          if (waveformProp.trim().startsWith('[')) {
+            setWaveform(JSON.parse(waveformProp));
+            setIsLoading(false);
+          } else {
+            setWaveform(undefined);
+          }
+        } catch {
+          setWaveform(undefined);
+        }
+      } else {
+        setWaveform(undefined);
+      }
+    } else if (url) {
+      setWaveform(null);
+      setWaveformError(null);
+      setIsLoading(true);
+      
+      getAudioWaveform(url)
+        .then(w => { 
+          if (!cancelled) {
+            setWaveform(w);
+            setIsLoading(false);
+          }
+        })
+        .catch(e => { 
+          if (!cancelled) {
+            setWaveformError(e.message);
+            setIsLoading(false);
+          }
+        });
+    }
+    return () => { cancelled = true; };
+  }, [url, waveformProp]);
+
+  const handlePlayPause = () => {
+    if (!audioRef.current) return;
+
+    if (isPlaying) {
+      audioRef.current.pause();
+      setIsPlaying(false);
+    } else {
+      // Wenn pausiert, von der aktuellen Position weiterspielen
+      audioRef.current.play().catch(error => {
+        console.error('Fehler beim Abspielen:', error);
+        setIsPlaying(false);
+      });
+      setIsPlaying(true);
+    }
+  };
+
+  // Scrubbing-Handler
+  const handleScrub = (progress, phase) => {
+    // Zusätzliche Checks für gültige Werte
+    if (!audioRef.current || !durationToShow || !isFinite(durationToShow) || isNaN(durationToShow)) return;
+
+    if (phase === 'start') {
+      setIsScrubbing(true);
+      setScrubTime(progress * durationToShow);
+    } else if (phase === 'move') {
+      setScrubTime(progress * durationToShow);
+    } else if (phase === 'end') {
+      setIsScrubbing(false);
+      if (
+        scrubTime != null &&
+        isFinite(scrubTime) &&
+        !isNaN(scrubTime) &&
+        scrubTime >= 0 &&
+        scrubTime <= durationToShow
+      ) {
+        audioRef.current.currentTime = scrubTime;
+        setCurrentTime(scrubTime);
+        if (isPlaying) {
+          audioRef.current.play();
+        }
+      }
+      setScrubTime(null);
+    }
+  };
+
+  // Wenn eine andere Nachricht abgespielt wird, stoppe diese
+  React.useEffect(() => {
+    if (!isPlaying && audioRef.current) {
+      audioRef.current.pause();
+    }
+  }, [isPlaying]);
+
+  const progress = isScrubbing && scrubTime != null
+    ? scrubTime / durationToShow
+    : (durationToShow ? currentTime / durationToShow : 0);
+
+  return (
+    <Box sx={{
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      bgcolor: isOwn ? '#ff4081' : '#ffe3f3',
+      borderRadius: 3,
+      px: 2,
+      py: 1,
+      minWidth: 180,
+      maxWidth: 320,
+      gap: 1,
+      mt: 1,
+      mb: 0.5,
+      boxShadow: 0,
+    }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flex: 1 }}>
+        <IconButton 
+          size="small" 
+          onClick={handlePlayPause} 
+          disabled={isLoading}
+          sx={{ 
+            ml: -1.5, 
+            color: 'white', 
+            bgcolor: isOwn ? '#ff4081' : '#fff', 
+            '&:hover': { bgcolor: isOwn ? '#e91e63' : '#e3f2fd' },
+            '&.Mui-disabled': {
+              color: 'rgba(255, 255, 255, 0.5)',
+              bgcolor: isOwn ? 'rgba(255, 64, 129, 0.5)' : 'rgba(255, 255, 255, 0.5)'
+            }
+          }}
+        >
+          {isLoading ? (
+            <CircularProgress size={20} color="inherit" />
+          ) : isPlaying ? (
+            <PauseIcon />
+          ) : (
+            <PlayArrowIcon />
+          )}
+        </IconButton>
+        <Box sx={{ flex: 1, minWidth: 160, maxWidth: 260, mx: 0.5 }}>
+          {waveform ? (
+            <AudioWaveform
+              waveform={waveform}
+              color="#fff"
+              progress={progress}
+              onScrub={handleScrub}
+              isScrubbing={isScrubbing}
+            />
+          ) : waveformError ? (
+            <Typography variant="caption" color="error">Waveform-Fehler</Typography>
+          ) : (
+            <CircularProgress size={20} />
+          )}
+        </Box>
+      </Box>
+      <Typography variant="body2" sx={{ color: 'white', fontWeight: 500, minWidth: 36, textAlign: 'right', ml: 1, flexShrink: 0 }}>
+        {formatDuration(durationToShow)}
+      </Typography>
+    </Box>
+  );
+}
+
+// Füge CSS für die Puls-Animation hinzu
+<style>
+  {`
+    @keyframes pulse {
+      0% { opacity: 1; }
+      50% { opacity: 0.5; }
+      100% { opacity: 1; }
+    }
+  `}
+</style> 

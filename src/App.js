@@ -651,6 +651,8 @@ function App() {
   const [themeSetting, setThemeSetting] = useState('system');
   const [languageSetting, setLanguageSetting] = useState('de');
   const [pushEnabled, setPushEnabled] = useState(false);
+  const [showMobileChatDetail, setShowMobileChatDetail] = useState(false);
+  const isMobile = /Mobi|Android/i.test(navigator.userAgent) || window.innerWidth <= 600;
   const { t, i18n } = useTranslation();
 
   // Prüfe Push-Support und Subscription-Status
@@ -845,115 +847,57 @@ function App() {
         <Route path="/rezepte/:id" element={<RecipeDetail />} />
         <Route path="*" element={
           <>
-            <HideOnScroll setAppBarHidden={setAppBarHidden}>
-              <AppBar position="sticky" color="default" elevation={0} sx={{ borderBottom: 1, borderColor: 'divider', height: 56, justifyContent: 'center' }}>
-                <Toolbar sx={{ minHeight: 56, px: 2, display: 'flex', justifyContent: 'space-between' }}>
-                  <IconButton 
-                    size="large" 
-                    edge="start" 
-                    color="inherit"
-                    onClick={() => setProfileDialogOpen(true)}
-                  >
-                    <Avatar src={user?.avatar_url || "https://i.pravatar.cc/40?img=1"} />
-                  </IconButton>
-                  <Box sx={{ flex: 1 }} />
-                  <IconButton size="large" edge="end" color="inherit" onClick={() => setSettingsDialogOpen(true)}>
-                    <SettingsIcon />
-                  </IconButton>
-                </Toolbar>
-              </AppBar>
-            </HideOnScroll>
-
-            <Dialog open={settingsDialogOpen} onClose={() => setSettingsDialogOpen(false)} maxWidth="sm" fullWidth>
-              <DialogTitle>{t('Einstellungen')}</DialogTitle>
-              <DialogContent>
-                <Box sx={{ mb: 3 }}>
-                  <FormControl component="fieldset" fullWidth>
-                    <FormLabel component="legend">{t('Theme')}</FormLabel>
-                    <RadioGroup
-                      row
-                      value={themeSetting}
-                      onChange={e => setThemeSetting(e.target.value)}
-                      sx={{ mt: 1 }}
+            {/* AppBar (Avatar/Settings) nur anzeigen, wenn NICHT in Mobile-Chat-Detail */}
+            {!(isMobile && showMobileChatDetail) && (
+              <HideOnScroll setAppBarHidden={setAppBarHidden}>
+                <AppBar position="sticky" color="default" elevation={0} sx={{ borderBottom: 1, borderColor: 'divider', height: 56, justifyContent: 'center' }}>
+                  <Toolbar sx={{ minHeight: 56, px: 2, display: 'flex', justifyContent: 'space-between' }}>
+                    <IconButton 
+                      size="large" 
+                      edge="start" 
+                      color="inherit"
+                      onClick={() => setProfileDialogOpen(true)}
                     >
-                      <FormControlLabel value="light" control={<Radio />} label={t('Hell')} />
-                      <FormControlLabel value="dark" control={<Radio />} label={t('Dunkel')} />
-                      <FormControlLabel value="system" control={<Radio />} label={t('System')} />
-                    </RadioGroup>
-                  </FormControl>
-                </Box>
-                <Box sx={{ mb: 3 }}>
-                  <FormControl fullWidth>
-                    <FormLabel>{t('Sprache')}</FormLabel>
-                    <Select
-                      value={languageSetting}
-                      onChange={e => {
-                        setLanguageSetting(e.target.value);
-                        i18n.changeLanguage(e.target.value);
-                      }}
-                      sx={{ mt: 1 }}
-                    >
-                      <MenuItem value="de">{t('Deutsch')}</MenuItem>
-                      <MenuItem value="en">{t('Englisch')}</MenuItem>
-                    </Select>
-                  </FormControl>
-                </Box>
-                <Box>
-                  <FormControl fullWidth>
-                    <FormLabel>{t('PushBenachrichtigungen')}</FormLabel>
-                    <Box sx={{ mt: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <Switch
-                        checked={pushEnabled}
-                        onChange={handlePushToggle}
-                        color="primary"
-                      />
-                      <Typography variant="body2" color="text.secondary">
-                        {t('PushBenachrichtigungenInfo')}
-                      </Typography>
-                    </Box>
-                  </FormControl>
-                </Box>
-              </DialogContent>
-              <DialogActions>
-                <Button onClick={() => setSettingsDialogOpen(false)}>{t('Schließen')}</Button>
-              </DialogActions>
-            </Dialog>
-
-            <ProfileDialog
-              open={profileDialogOpen}
-              onClose={() => setProfileDialogOpen(false)}
-              user={user}
-              onLogout={handleLogout}
-              onProfileUpdate={handleProfileUpdate}
-            />
-
-            <AppBar
-              position="sticky"
-              color="inherit"
-              elevation={1}
-              sx={{
-                top: appBarHidden ? 0 : 56,
-                zIndex: 1100,
-                transition: 'top 0.3s',
-              }}
-            >
-              <Tabs
-                value={tabValue}
-                onChange={handleTabChange}
-                variant="scrollable"
-                scrollButtons="auto"
-                sx={{ borderBottom: 1, borderColor: 'divider', minHeight: 48 }}
-                TabIndicatorProps={{ style: { height: 3, background: '#ff4081' } }}
+                      <Avatar src={user?.avatar_url || "https://i.pravatar.cc/40?img=1"} />
+                    </IconButton>
+                    <Box sx={{ flex: 1 }} />
+                    <IconButton size="large" edge="end" color="inherit" onClick={() => setSettingsDialogOpen(true)}>
+                      <SettingsIcon />
+                    </IconButton>
+                  </Toolbar>
+                </AppBar>
+              </HideOnScroll>
+            )}
+            {/* Tab-Leiste nur anzeigen, wenn NICHT in Mobile-Chat-Detail */}
+            {!(isMobile && showMobileChatDetail) && (
+              <AppBar
+                position="sticky"
+                color="inherit"
+                elevation={1}
+                sx={{
+                  top: appBarHidden ? 0 : 56,
+                  zIndex: 1100,
+                  transition: 'top 0.3s',
+                }}
               >
-                <Tab icon={<AccessTimeIcon />} label={t('Zeitkapsel')} sx={{ minHeight: 48 }} />
-                <Tab icon={<SportsEsportsIcon />} label={t('Spiele')} sx={{ minHeight: 48 }} />
-                <Tab icon={<FavoriteIcon />} label={t('Musik')} sx={{ minHeight: 48 }} />
-                <Tab icon={<MessageIcon />} label={t('Chat')} sx={{ minHeight: 48 }} />
-                <Tab icon={<ListAltIcon />} label={t('Listen')} sx={{ minHeight: 48 }} />
-                <Tab icon={<SoupKitchenIcon />} label={t('Rezepte')} sx={{ minHeight: 48 }} />
-                <Tab icon={<StarIcon />} label={t('Inspiration')} sx={{ minHeight: 48 }} />
-              </Tabs>
-            </AppBar>
+                <Tabs
+                  value={tabValue}
+                  onChange={handleTabChange}
+                  variant="scrollable"
+                  scrollButtons="auto"
+                  sx={{ borderBottom: 1, borderColor: 'divider', minHeight: 48 }}
+                  TabIndicatorProps={{ style: { height: 3, background: '#ff4081' } }}
+                >
+                  <Tab icon={<AccessTimeIcon />} label={t('Zeitkapsel')} sx={{ minHeight: 48 }} />
+                  <Tab icon={<SportsEsportsIcon />} label={t('Spiele')} sx={{ minHeight: 48 }} />
+                  <Tab icon={<FavoriteIcon />} label={t('Musik')} sx={{ minHeight: 48 }} />
+                  <Tab icon={<MessageIcon />} label={t('Chat')} sx={{ minHeight: 48 }} />
+                  <Tab icon={<ListAltIcon />} label={t('Listen')} sx={{ minHeight: 48 }} />
+                  <Tab icon={<SoupKitchenIcon />} label={t('Rezepte')} sx={{ minHeight: 48 }} />
+                  <Tab icon={<StarIcon />} label={t('Inspiration')} sx={{ minHeight: 48 }} />
+                </Tabs>
+              </AppBar>
+            )}
             <Box component="main" sx={{ flexGrow: 1 }}>
               <Container maxWidth="md" sx={{ pt: 4 }}>
                 <Paper sx={{ width: '100%', mb: 4, boxShadow: 0, bgcolor: 'transparent' }}>
@@ -967,7 +911,7 @@ function App() {
                     <MusicTab user={user} />
                   </TabPanel>
                   <TabPanel value={tabValue} index={3}>
-                    <ChatTab user={user} />
+                    <ChatTab user={user} onChatDetailViewChange={setShowMobileChatDetail} />
                   </TabPanel>
                   <TabPanel value={tabValue} index={4}>
                     <SharedListsTab user={user} />
