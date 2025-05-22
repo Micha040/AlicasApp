@@ -1011,15 +1011,26 @@ export default function ChatTab({ user, onChatDetailViewChange }) {
             <Box
               sx={{ 
                 flex: 1, 
-                overflowY: 'auto', 
-                pb: mediaMenuOpen ? '92px' : '56px', // Höhe der Eingabeleiste bzw. Menü
+                overflowY: 'auto',
+                overflowX: 'hidden', // Verhindert horizontales Scrollen
+                WebkitOverflowScrolling: 'touch', // Besseres Scrollen auf iOS
+                overscrollBehavior: 'contain', // Verhindert Scroll-Überlauf
+                pb: mediaMenuOpen ? '92px' : '84px',
                 pt: '8px',
-                px: 1
+                px: 1,
+                width: '100%', // Stellt sicher, dass die Box die volle Breite nutzt
+                maxWidth: '100%', // Verhindert horizontales Überlaufen
+                position: 'relative', // Hilft bei der Scroll-Containment
+                touchAction: 'pan-y', // Erlaubt nur vertikales Scrollen auf Touch-Geräten
               }}
               ref={messagesListRef}
               onScroll={handleScroll}
             >
-              <List>
+              <List sx={{ 
+                width: '100%',
+                maxWidth: '100%',
+                overflow: 'hidden'
+              }}>
                 {loadingMore && (
                   <ListItem sx={{ justifyContent: 'center' }}>
                     <CircularProgress size={20} />
