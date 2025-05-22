@@ -1081,6 +1081,59 @@ export default function ChatTab({ user, onChatDetailViewChange }) {
                 <div ref={messagesEndRef} />
               </List>
             </Box>
+            {/* Bildvorschau über der Eingabeleiste */}
+            {imageToSend && (
+              <Box sx={{ 
+                position: 'fixed',
+                left: 0,
+                right: 0,
+                bottom: mediaMenuOpen ? '176px' : '84px', // Über der Eingabeleiste
+                zIndex: 25,
+                bgcolor: '#f5f5f5',
+                borderTop: '1px solid #eee',
+                p: 2,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 1
+              }}>
+                <Box sx={{ 
+                  position: 'relative',
+                  width: '100%',
+                  maxHeight: '200px',
+                  borderRadius: '12px',
+                  overflow: 'hidden',
+                  bgcolor: '#fff',
+                  boxShadow: 1
+                }}>
+                  <img 
+                    src={imageToSend} 
+                    alt="Vorschau" 
+                    style={{ 
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'contain',
+                      maxHeight: '200px'
+                    }} 
+                  />
+                  <IconButton 
+                    size="small" 
+                    onClick={() => setImageToSend(null)}
+                    sx={{ 
+                      position: 'absolute',
+                      top: 8,
+                      right: 8,
+                      bgcolor: 'rgba(0,0,0,0.5)',
+                      color: 'white',
+                      '&:hover': {
+                        bgcolor: 'rgba(0,0,0,0.7)'
+                      }
+                    }}
+                  >
+                    <CloseIcon />
+                  </IconButton>
+                </Box>
+              </Box>
+            )}
             {/* Fixierte Eingabezeile über dem Footer */}
             <Box sx={{ 
               position: 'fixed', 
@@ -1095,7 +1148,7 @@ export default function ChatTab({ user, onChatDetailViewChange }) {
               gap: 1, 
               alignItems: 'center', 
               transition: 'bottom 0.2s',
-              height: '84px' // Noch größere Höhe
+              height: '84px'
             }}>
               <IconButton onClick={() => setMediaMenuOpen(open => !open)} sx={{ p: 1, mt: -2 }}>
                 <MenuIcon />
@@ -1109,8 +1162,8 @@ export default function ChatTab({ user, onChatDetailViewChange }) {
                 size="small"
                 sx={{ 
                   '& .MuiOutlinedInput-root': { 
-                    height: '56px', // Noch größere Höhe für das Input-Feld
-                    mt: -2 // Weiter nach oben verschieben
+                    height: '56px',
+                    mt: -2
                   }, 
                   mr: 0 
                 }}
@@ -1120,11 +1173,11 @@ export default function ChatTab({ user, onChatDetailViewChange }) {
                 variant="contained"
                 sx={{ 
                   minWidth: '64px', 
-                  height: '56px', // Noch größere Höhe für den Button
+                  height: '56px',
                   flexShrink: 0, 
                   px: 1.5, 
                   mr: 1,
-                  mt: -2 // Weiter nach oben verschieben
+                  mt: -2
                 }}
               >
                 Senden
