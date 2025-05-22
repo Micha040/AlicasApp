@@ -1071,8 +1071,22 @@ export default function ChatTab({ user, onChatDetailViewChange }) {
               </List>
             </Box>
             {/* Fixierte Eingabezeile über dem Footer */}
-            <Box sx={{ position: 'fixed', left: 0, right: 0, bottom: mediaMenuOpen ? '92px' : 0, zIndex: 30, bgcolor: '#fff', borderTop: '1px solid #eee', p: 1, display: 'flex', gap: 1, alignItems: 'center', transition: 'bottom 0.2s' }}>
-              <IconButton onClick={() => setMediaMenuOpen(open => !open)} sx={{ p: 1 }}>
+            <Box sx={{ 
+              position: 'fixed', 
+              left: 0, 
+              right: 0, 
+              bottom: mediaMenuOpen ? '92px' : 0, 
+              zIndex: 30, 
+              bgcolor: '#fff', 
+              borderTop: '1px solid #eee', 
+              p: 2.5, 
+              display: 'flex', 
+              gap: 1, 
+              alignItems: 'center', 
+              transition: 'bottom 0.2s',
+              height: '84px' // Noch größere Höhe
+            }}>
+              <IconButton onClick={() => setMediaMenuOpen(open => !open)} sx={{ p: 1, mt: -2 }}>
                 <MenuIcon />
               </IconButton>
               <TextField
@@ -1082,12 +1096,25 @@ export default function ChatTab({ user, onChatDetailViewChange }) {
                 placeholder={t('NachrichtSchreiben')}
                 onKeyDown={e => { if (e.key === 'Enter') handleSend(); }}
                 size="small"
-                sx={{ '& .MuiOutlinedInput-root': { height: '40px' }, mr: 0 }}
+                sx={{ 
+                  '& .MuiOutlinedInput-root': { 
+                    height: '56px', // Noch größere Höhe für das Input-Feld
+                    mt: -2 // Weiter nach oben verschieben
+                  }, 
+                  mr: 0 
+                }}
               />
               <Button 
                 onClick={handleSend} 
                 variant="contained"
-                sx={{ minWidth: '60px', height: '40px', flexShrink: 0, px: 1.5, mr: 1 }}
+                sx={{ 
+                  minWidth: '64px', 
+                  height: '56px', // Noch größere Höhe für den Button
+                  flexShrink: 0, 
+                  px: 1.5, 
+                  mr: 1,
+                  mt: -2 // Weiter nach oben verschieben
+                }}
               >
                 Senden
               </Button>
